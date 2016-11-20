@@ -32,6 +32,7 @@ if $0 == __FILE__
       src << line
     end
 
+    gist = 'https://gist.github.com/gromnitsky/29124d477a96aedb5a50f83539d9ce3e'
     template = <<END
 <!doctype html>
 <html>
@@ -97,7 +98,11 @@ table tr:nth-child(even) {
 
 <pre><%= CGI.escape_html src.join '' %></pre>
 
-  </body>
+<p>
+<a href="<%= gist %>"><%= gist %></a>
+</p>
+
+</body>
 </html>
 END
     puts (ERB.new template).result binding
