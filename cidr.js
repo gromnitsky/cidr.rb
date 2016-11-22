@@ -10,13 +10,13 @@ let cidr = {};
     }
 
     // fcb - four chunks of bytes
-    exports.ip_to_fcb = function(ip) {
+    exports.str2ip = function(ip) {
 	return ip.split('.')
 	    .map( val => byte_string(parseInt(val, 10))
 		  .split('').map( ch => parseInt(ch, 2)))
     }
 
-    exports.fcb_to_ip = function(arr) {
+    exports.ip2str = function(arr) {
 	return arr.map( val => parseInt(val.join(''), 2)).join('.')
     }
 
@@ -33,15 +33,12 @@ let cidr = {};
     }
 
     exports.netaddr = function(ip, mask) {
-	let ip_chunks = exports.ip_to_fcb(ip)
-	let mask_chunks = exports.ip_to_fcb(mask)
-	let r = chunks_map(ip_chunks, mask_chunks, (top, bottom) => {
+	return chunks_map(ip, mask, (top, bottom) => {
 	    return top & bottom
 	})
-	return exports.fcb_to_ip(r)
     }
 
-    exports.fcb_invert = function(arr) {
+    exports.ip_invert = function(arr) {
 	let r = []
 
 	for (let cidx=0; cidx < arr.length; ++cidx) {
@@ -55,24 +52,18 @@ let cidr = {};
     }
 
     exports.broadcast_addr = function(ip, mask) {
-	let ip_chunks = exports.ip_to_fcb(ip)
-	let mask_chunks_inverted = exports.fcb_invert(exports.ip_to_fcb(mask))
-	let r = chunks_map(ip_chunks, mask_chunks_inverted, (top, bottom) => {
+	return chunks_map(ip, exports.ip_invert(mask), (top, bottom) => {
 	    return top | bottom
 	})
-	return exports.fcb_to_ip(r)
     }
 
     exports.hostaddr = function(ip, mask) {
-	let ip_chunks = exports.ip_to_fcb(ip)
-	let mask_chunks_inverted = exports.fcb_invert(exports.ip_to_fcb(mask))
-	let r = chunks_map(ip_chunks, mask_chunks_inverted, (top, bottom) => {
+	return chunks_map(ip, exports.ip_invert(mask), (top, bottom) => {
 	    return top & bottom
 	})
-	return exports.fcb_to_ip(r)
     }
 
-    exports.mask_fcb = function(cidr) {
+    exports.mask = function(cidr) {
 	if (cidr < 0 || cidr > 32) throw new Error("invalid value for cidr")
 	let bits = Array(cidr).fill(1)
 	let zeros = Array(32 - bits.length).fill(0)
@@ -90,8 +81,8 @@ let cidr = {};
 	return r
     }
 
-    exports.cidr = function(mask_fcb) {
-	let flatten = [].concat.apply([], mask_fcb)
+    exports.cidr = function(mask) {
+	let flatten = [].concat.apply([], mask)
 	return flatten.reduce( (prev, cur) => prev + cur, 0)
     }
 
@@ -99,11 +90,16 @@ let cidr = {};
 	return Math.pow(2, (32 - cidr)) - 2
     }
 
-    exports.hosts_range = function(ip, cidr) {
-	let fcb = exports.ip_to_fcb(ip)
-	let last = parseInt(fcb[3].join(''), 2) + exports.maxhosts(cidr) - 1
-	fcb[3] = exports.ip_to_fcb(last.toString())[0]
-	return [ip, exports.fcb_to_ip(fcb)]
+    exports.hosts_range = function(ip, mask) {
+	let first = exports.netaddr(ip, mask)
+	let min = parseInt(first[3].join(''), 2) + 1
+	first[3] = exports.str2ip(min.toString())[0]
+
+	let last = exports.broadcast_addr(ip, mask)
+	let max = parseInt(last[3].join(''), 2) - 1
+	last[3] = exports.str2ip(max.toString())[0]
+
+	return [first, last]
     }
 
     exports.parse_query = function(query) {
