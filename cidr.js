@@ -102,33 +102,45 @@ let cidr = {};
 	return [first, last]
     }
 
-    exports.parse_query = function(query) {
+    exports.query_parse = function(query) {
 	query.replace(/\s+/, ' ').trim()
 	let m
 
 	// /16
 	if ((m = query.match(/^\/?(\d+)$/)) ) {
-	    return { cidr: parseInt(m[1], 10) }
+	    let cidr = parseInt(m[1], 10)
+	    return {
+		cidr,
+		mask: exports.mask(cidr)
+	    }
 	}
 
 	// 255.255.0.0
 	if ((m = query.match(/^\d+\.\d+\.\d\.\d+$/)) ) {
-	    return { mask: query }
+	    let mask = exports.str2ip(query)
+	    return {
+		cidr: exports.cidr(mask),
+		mask
+	    }
 	}
 
 	// 192.168.1.1 255.255.0.0
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d) (\d+\.\d+\.\d\.\d+)$/)) ) {
+	    let mask = exports.str2ip(m[2])
 	    return {
-		ip: m[1],
-		mask: m[2]
+		cidr: exports.cidr(mask),
+		mask,
+		ip: exports.str2ip(m[1]),
 	    }
 	}
 
 	// 192.168.1.1/30
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
+	    let cidr = parseInt(m[2], 10)
 	    return {
-		ip: m[1],
-		cidr: parseInt(m[2], 10)
+		cidr,
+		mask: exports.mask(cidr),
+		ip: exports.str2ip(m[1]),
 	    }
 	}
 

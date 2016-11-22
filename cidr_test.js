@@ -80,24 +80,35 @@ suite('CIDR', function() {
 			  cidr.str2ip('192.168.255.254')])
     })
 
-    test('parse_query', function() {
+    test('query_parse', function() {
 	assert.throws( () => {
-	    cidr.parse_query('huh?')
+	    cidr.query_parse('huh?')
 	}, /incomplete query/)
 
-	assert.deepEqual(cidr.parse_query('30'), { cidr: 30 } )
-	assert.deepEqual(cidr.parse_query('/8'), { cidr: 8 } )
-
-	assert.deepEqual(cidr.parse_query('255.255.0.0'), { mask: '255.255.0.0' } )
-
-	assert.deepEqual(cidr.parse_query('127.0.0.1 255.255.0.0'), {
-	    mask: '255.255.0.0',
-	    ip: '127.0.0.1'
+	assert.deepEqual(cidr.query_parse('30'), {
+	    cidr: 30,
+	    mask: cidr.str2ip('255.255.255.252')
+	})
+	assert.deepEqual(cidr.query_parse('/8'), {
+	    cidr: 8,
+	    mask: cidr.str2ip('255.0.0.0')
 	})
 
-	assert.deepEqual(cidr.parse_query('127.0.0.1/8'), {
-	    cidr: '8',
-	    ip: '127.0.0.1'
+	assert.deepEqual(cidr.query_parse('255.255.0.0'), {
+	    cidr: 16,
+	    mask: cidr.str2ip('255.255.0.0')
+	})
+
+	assert.deepEqual(cidr.query_parse('127.0.0.1 255.255.0.0'), {
+	    cidr: 16,
+	    mask: cidr.str2ip('255.255.0.0'),
+	    ip: cidr.str2ip('127.0.0.1')
+	})
+
+	assert.deepEqual(cidr.query_parse('127.0.0.1/8'), {
+	    cidr: 8,
+	    mask: cidr.str2ip('255.0.0.0'),
+	    ip: cidr.str2ip('127.0.0.1')
 	})
     })
 
