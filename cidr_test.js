@@ -49,4 +49,28 @@ suite('CIDR', function() {
 		     '0.0.0.3')
     })
 
+    test('mask', function() {
+	assert.deepEqual(cidr.mask(30),
+		     [ [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+		       [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+		       [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+		       [ 1, 1, 1, 1, 1, 1, 0, 0 ] ])
+    })
+
+    test('cidr', function() {
+	assert.deepEqual(cidr.cidr([ [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+				     [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+				     [ 1, 1, 1, 1, 1, 1, 1, 1 ],
+				     [ 1, 1, 1, 1, 1, 1, 0, 0 ] ]), 30)
+    })
+
+    test('maxhosts', function() {
+	assert.equal(cidr.maxhosts(30), 2)
+    })
+
+    test('hosts_range', function() {
+	assert.deepEqual(cidr.hosts_range('192.168.1.7', 30),
+			 ['192.168.1.7', '192.168.1.8'])
+    })
+
 })

@@ -20,7 +20,7 @@ let cidr = {};
 	return arr.map( val => parseInt(val.join(''), 2)).join('.')
     }
 
-    let chunks_each = function(arr1, arr2, cb) {
+    let chunks_map = function(arr1, arr2, cb) {
 	let r = []
 	for (let cidx=0; cidx < arr1.length; ++cidx) {
 	    let chunk = []
@@ -35,7 +35,7 @@ let cidr = {};
     exports.netaddr = function(ip, mask) {
 	let ip_chunks = exports.ip_to_fcb(ip)
 	let mask_chunks = exports.ip_to_fcb(mask)
-	let r = chunks_each(ip_chunks, mask_chunks, (top, bottom) => {
+	let r = chunks_map(ip_chunks, mask_chunks, (top, bottom) => {
 	    return top & bottom
 	})
 	return exports.fcb_to_ip(r)
@@ -57,7 +57,7 @@ let cidr = {};
     exports.broadcast_addr = function(ip, mask) {
 	let ip_chunks = exports.ip_to_fcb(ip)
 	let mask_chunks_inverted = exports.fcb_invert(exports.ip_to_fcb(mask))
-	let r = chunks_each(ip_chunks, mask_chunks_inverted, (top, bottom) => {
+	let r = chunks_map(ip_chunks, mask_chunks_inverted, (top, bottom) => {
 	    return top | bottom
 	})
 	return exports.fcb_to_ip(r)
@@ -66,10 +66,44 @@ let cidr = {};
     exports.hostaddr = function(ip, mask) {
 	let ip_chunks = exports.ip_to_fcb(ip)
 	let mask_chunks_inverted = exports.fcb_invert(exports.ip_to_fcb(mask))
-	let r = chunks_each(ip_chunks, mask_chunks_inverted, (top, bottom) => {
+	let r = chunks_map(ip_chunks, mask_chunks_inverted, (top, bottom) => {
 	    return top & bottom
 	})
 	return exports.fcb_to_ip(r)
+    }
+
+    exports.mask = function(cidr) {
+	if (cidr < 0 || cidr > 32) throw new Error("invalid value for cidr")
+	let bits = Array(cidr).fill(1)
+	let zeros = Array(32 - bits.length).fill(0)
+	let arr = bits.concat(zeros)
+	let r = []
+	let chunk = []
+	for (let idx = 0; idx < arr.length; ++idx) {
+	    if (idx % 8 === 0) {
+		if (idx !== 0) r.push(chunk)
+		chunk = []
+	    }
+	    chunk.push(arr[idx])
+	}
+	r.push(chunk)
+	return r
+    }
+
+    exports.cidr = function(mask_fcb) {
+	let flatten = [].concat.apply([], mask_fcb)
+	return flatten.reduce( (prev, cur) => prev + cur, 0)
+    }
+
+    exports.maxhosts = function(cidr) {
+	return Math.pow(2, (32 - cidr)) - 2
+    }
+
+    exports.hosts_range = function(ip, cidr) {
+	let fcb = exports.ip_to_fcb(ip)
+	let last = parseInt(fcb[3].join(''), 2) + exports.maxhosts(cidr) - 1
+	fcb[3] = exports.ip_to_fcb(last.toString())[0]
+	return [ip, exports.fcb_to_ip(fcb)]
     }
 
 })(typeof exports === 'object' ? exports : cidr)
