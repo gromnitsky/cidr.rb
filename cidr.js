@@ -72,7 +72,7 @@ let cidr = {};
 	return exports.fcb_to_ip(r)
     }
 
-    exports.mask = function(cidr) {
+    exports.mask_fcb = function(cidr) {
 	if (cidr < 0 || cidr > 32) throw new Error("invalid value for cidr")
 	let bits = Array(cidr).fill(1)
 	let zeros = Array(32 - bits.length).fill(0)
@@ -104,6 +104,39 @@ let cidr = {};
 	let last = parseInt(fcb[3].join(''), 2) + exports.maxhosts(cidr) - 1
 	fcb[3] = exports.ip_to_fcb(last.toString())[0]
 	return [ip, exports.fcb_to_ip(fcb)]
+    }
+
+    exports.parse_query = function(query) {
+	query.replace(/\s+/, ' ').trim()
+	let m
+
+	// /16
+	if ((m = query.match(/^\/?(\d+)$/)) ) {
+	    return { cidr: parseInt(m[1], 10) }
+	}
+
+	// 255.255.0.0
+	if ((m = query.match(/^\d+\.\d+\.\d\.\d+$/)) ) {
+	    return { mask: query }
+	}
+
+	// 192.168.1.1 255.255.0.0
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d) (\d+\.\d+\.\d\.\d+)$/)) ) {
+	    return {
+		ip: m[1],
+		mask: m[2]
+	    }
+	}
+
+	// 192.168.1.1/30
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
+	    return {
+		ip: m[1],
+		cidr: parseInt(m[2], 10)
+	    }
+	}
+
+	throw new Error('incomplete query')
     }
 
 })(typeof exports === 'object' ? exports : cidr)
