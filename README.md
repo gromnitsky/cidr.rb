@@ -5,7 +5,7 @@ for printing & pinning it to the wall.
 
 Includes a simple IP calculator. Works offline.
 
-Example: http://sigwait.tk/cidr.html
+Example: http://sigwait.tk/cidr/cidr.html
 
 ## Usage
 

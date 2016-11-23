@@ -32,7 +32,7 @@ if $0 == __FILE__
       src << line
     end
 
-    gist = 'https://gist.github.com/gromnitsky/29124d477a96aedb5a50f83539d9ce3e'
+    github = 'https://github.com/gromnitsky/cidr.rb'
     template = <<END
 <!doctype html>
 <html>
@@ -129,7 +129,7 @@ table tr:nth-child(even) {
 <pre><%= CGI.escape_html src.join '' %></pre>
 
 <p>
-<a href="<%= gist %>"><%= gist %></a>
+<a href="<%= github %>"><%= github %></a>
 </p>
 
 <script src="cidr.js"></script>
