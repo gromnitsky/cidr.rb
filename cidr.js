@@ -151,13 +151,14 @@ let cidr = {};
 
 /* main */
 if (typeof window === 'object') {
-    let calc = function() {
+    let calc = function(url_params) {
 	let r
 	let out = document.getElementById('cidr-calc__result')
+	let query = document.getElementById('cidr-calc__input').value
 	try {
-	    r = cidr.query_parse(document.getElementById('cidr-calc__input').value)
+	    r = cidr.query_parse(query)
 	} catch (err) {
-	    out.innerHTML = `Error: ${err.message}`
+	    out.innerHTML = `<b>Error:</b> ${err.message}`
 	    return
 	}
 
@@ -195,13 +196,24 @@ if (typeof window === 'object') {
 
 	templ.push('</table></tbody>')
 	out.innerHTML = templ.join("\n")
+
+	// upd location after successful rendering only
+	url_params.set('q', query)
+	location.hash = '#' + url_params
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-	document.getElementById('cidr-calc__submit').onclick = calc
-	document.getElementById('cidr-calc__input')
-	    .addEventListener('keydown', (evt) => {
-		if (evt.keyCode === 13) calc()
-	    })
+	let params = new URLSearchParams(location.hash.slice(1))
+	let input = document.getElementById('cidr-calc__input')
+	input.addEventListener('keydown', (evt) => {
+	    if (evt.keyCode === 13) calc(params)
+	})
+	document.getElementById('cidr-calc__submit')
+	    .onclick = () => calc(params)
+
+	if (params.get('q')) {
+	    input.value = params.get('q')
+	    calc(params)
+	}
     })
 }
