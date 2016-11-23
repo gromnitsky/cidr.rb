@@ -53,6 +53,7 @@ if $0 == __FILE__
   th, td {
     border-bottom: 1px solid #ddd;
   }
+  #cidr-calc { display: none; }
 }
 table {
   width: 100%;
@@ -65,10 +66,28 @@ table th {
 table tr:nth-child(even) {
   background-color: #fafafa;
 }
+#cidr-calc__form {
+  display: flex;
+  margin: 1em 0 .5em 0;
+}
+#cidr-calc__input {
+  flex-grow: 1;
+  margin-right: .2em;
+}
+#cidr-calc__result { margin-bottom: 1em; }
 </style>
 </head>
 
 <body>
+
+<div id="cidr-calc">
+ <div id="cidr-calc__form">
+  <input id="cidr-calc__input" type="text" spellcheck="false">
+  <button id="cidr-calc__submit">Calc</button>
+ </div>
+
+ <div id="cidr-calc__result">The query is empty.</div>
+</div>
 
 <table>
 
@@ -101,6 +120,8 @@ table tr:nth-child(even) {
 <p>
 <a href="<%= gist %>"><%= gist %></a>
 </p>
+
+<script src="cidr.js"></script>
 
 </body>
 </html>

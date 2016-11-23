@@ -148,3 +148,60 @@ let cidr = {};
     }
 
 })(typeof exports === 'object' ? exports : cidr)
+
+/* main */
+if (typeof window === 'object') {
+    let calc = function() {
+	let r
+	let out = document.getElementById('cidr-calc__result')
+	try {
+	    r = cidr.query_parse(document.getElementById('cidr-calc__input').value)
+	} catch (err) {
+	    out.innerHTML = `Error: ${err.message}`
+	    return
+	}
+
+	let templ = ['<table><tbody>']
+
+	let bits = function(arr) {
+	    return '<code>' + arr.map( val => val.join('')).join(' ') + '</code>'
+	}
+	let row = function() {
+	    let args = Array.prototype.slice.call(arguments)
+	    let t = ['<tr>']
+	    args.forEach( val => t.push(`<td>${val}</td>`))
+	    t.push('</tr>')
+	    templ.push(t.join("\n"))
+	}
+
+	row('CIDR', r.cidr)
+	row('Mask', cidr.ip2str(r.mask), bits(r.mask))
+
+	if (r.ip) {
+	    row('Address', cidr.ip2str(r.ip), bits(r.ip))
+
+	    let brd = cidr.broadcast_addr(r.ip, r.mask)
+	    row('Broadcast', cidr.ip2str(brd), bits(brd))
+
+	    let host = cidr.hostaddr(r.ip, r.mask)
+	    row('Host', cidr.ip2str(host), bits(host))
+
+	    row('Max hosts', cidr.maxhosts(r.cidr))
+
+	    let range = cidr.hosts_range(r.ip, r.mask)
+	    row('Begin', cidr.ip2str(range[0]))
+	    row('End', cidr.ip2str(range[1]))
+	}
+
+	templ.push('</table></tbody>')
+	out.innerHTML = templ.join("\n")
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+	document.getElementById('cidr-calc__submit').onclick = calc
+	document.getElementById('cidr-calc__input')
+	    .addEventListener('keydown', (evt) => {
+		if (evt.keyCode === 13) calc()
+	    })
+    })
+}
