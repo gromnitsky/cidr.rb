@@ -116,7 +116,7 @@ let cidr = {};
 	}
 
 	// 255.255.0.0
-	if ((m = query.match(/^\d+\.\d+\.\d\.\d+$/)) ) {
+	if ((m = query.match(/^\d+\.\d+\.\d+\.\d+$/)) ) {
 	    let mask = exports.str2ip(query)
 	    return {
 		cidr: exports.cidr(mask),
@@ -125,7 +125,7 @@ let cidr = {};
 	}
 
 	// 192.168.1.1 255.255.0.0
-	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d) (\d+\.\d+\.\d\.\d+)$/)) ) {
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) (\d+\.\d+\.\d+\.\d+)$/)) ) {
 	    let mask = exports.str2ip(m[2])
 	    return {
 		cidr: exports.cidr(mask),
