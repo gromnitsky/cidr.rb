@@ -103,7 +103,7 @@ let cidr = {};
     }
 
     exports.query_parse = function(query) {
-	query.replace(/\s+/, ' ').trim()
+	query = query.replace(/\s+/, ' ').trim()
 	let m
 
 	// /16
