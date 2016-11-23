@@ -187,7 +187,7 @@ if (typeof window === 'object') {
 	    let host = cidr.hostaddr(r.ip, r.mask)
 	    row('Host', cidr.ip2str(host), bits(host))
 
-	    row('Max hosts', cidr.maxhosts(r.cidr))
+	    row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
 	    let range = cidr.hosts_range(r.ip, r.mask)
 	    row('Begin', cidr.ip2str(range[0]))
