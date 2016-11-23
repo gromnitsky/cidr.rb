@@ -68,7 +68,7 @@ table tr:nth-child(even) {
 }
 #cidr-calc__form {
   display: flex;
-  margin: 1em 0 .5em 0;
+  margin: 0.5em 0;
 }
 #cidr-calc__input {
   flex-grow: 1;
@@ -81,6 +81,17 @@ table tr:nth-child(even) {
 <body>
 
 <div id="cidr-calc">
+ <details>
+  <summary>Help</summary>
+   <h3>Possible queries</h3>
+   <ul>
+   <li><code>24</code></li>
+   <li><code>255.255.255.192</code></li>
+   <li><code>192.168.1.1 255.255.0.0</code></li>
+   <li><code>192.168.1.1/30</code></li>
+   </ul>
+ </details>
+
  <div id="cidr-calc__form">
   <input id="cidr-calc__input" type="text" spellcheck="false">
   <button id="cidr-calc__submit">Calc</button>
