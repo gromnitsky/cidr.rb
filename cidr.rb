@@ -83,13 +83,18 @@ table tr:nth-child(even) {
 <div id="cidr-calc">
  <details>
   <summary>Help</summary>
-   <h3>Possible queries</h3>
-   <ul>
-   <li><code>24</code></li>
-   <li><code>255.255.255.192</code></li>
-   <li><code>192.168.1.1 255.255.0.0</code></li>
-   <li><code>192.168.1.1/30</code></li>
-   </ul>
+<table>
+<thead>
+<tr><th>Query</th><th>Explanation</th></tr>
+</thead>
+<tbody>
+<tr><td><code>24</code></td> <td>CIDR</td></tr>
+<tr><td><code>255.255.255.192</code></td> <td>Mask</td></tr>
+<tr><td><code>192.168.1.1 255.255.0.0</code></td> <td>IP & mask</td></tr>
+<tr><td><code>192.168.1.1/30</code></td> <td>IP & CIDR</td></tr>
+<tr><td><code>128.42.5.17 ~ 128.42.5.18</code></td> <td>Find the max mask for 2 IPs</td></tr>
+</tbody>
+</table>
  </details>
 
  <div id="cidr-calc__form">
