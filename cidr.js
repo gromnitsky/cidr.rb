@@ -102,8 +102,21 @@ let cidr = {};
 	return [first, last]
     }
 
+    exports.cidr_max = function(ip1, ip2) {
+	let in_common = true
+	let n = 0
+	chunks_map(ip1, ip2, (top, bottom) => {
+	    if (in_common && top === bottom) {
+		++n
+	    } else {
+		in_common = false
+	    }
+	})
+	return n
+    }
+
     exports.query_parse = function(query) {
-	query = query.replace(/\s+/, ' ').trim()
+	query = query.replace(/\s+/g, ' ').trim()
 	let m
 
 	// /16
@@ -144,6 +157,17 @@ let cidr = {};
 	    }
 	}
 
+	// 128.42.5.17 ~ 128.42.5.67
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) ?~ ?(\d+\.\d+\.\d+\.\d+)$/)) ) {
+	    let cidr = exports.cidr_max(exports.str2ip(m[1]),
+					exports.str2ip(m[2]))
+	    return {
+		cidr,
+		mask: exports.mask(cidr),
+		ip: exports.str2ip(m[1])
+	    }
+	}
+
 	throw new Error('incomplete query')
     }
 
@@ -177,17 +201,19 @@ if (typeof window === 'object') {
 
 	row('CIDR', r.cidr)
 	row('Mask', cidr.ip2str(r.mask), bits(r.mask))
+	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
 	if (r.ip) {
 	    row('Address', cidr.ip2str(r.ip), bits(r.ip))
+
+	    let net = cidr.netaddr(r.ip, r.mask)
+	    row('Network', cidr.ip2str(net), bits(net))
 
 	    let brd = cidr.broadcast_addr(r.ip, r.mask)
 	    row('Broadcast', cidr.ip2str(brd), bits(brd))
 
 	    let host = cidr.hostaddr(r.ip, r.mask)
 	    row('Host', cidr.ip2str(host), bits(host))
-
-	    row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
 	    let range = cidr.hosts_range(r.ip, r.mask)
 	    row('Begin', cidr.ip2str(range[0]))

@@ -80,6 +80,14 @@ suite('CIDR', function() {
 			  cidr.str2ip('192.168.255.254')])
     })
 
+    test('cidr_max', function() {
+	let ip1 = [[1,0,0,0,0,0,0,0], [0,0,1,0,1,0,1,0],
+		   [0,0,0,0,0,1,0,1], [0,0,0,1,0,0,0,1]]
+	let ip2 = [[1,0,0,0,0,0,0,0], [0,0,1,0,1,0,1,0],
+		   [0,0,0,0,0,1,0,1], [0,1,0,0,0,0,1,1]]
+	assert.deepEqual(cidr.cidr_max(ip1, ip2), 25)
+    })
+
     test('query_parse', function() {
 	assert.throws( () => {
 	    cidr.query_parse('huh?')
