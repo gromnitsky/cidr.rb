@@ -75,6 +75,8 @@ table tr:nth-child(even) {
   margin-right: .2em;
 }
 #cidr-calc__result { margin-bottom: 1em; }
+details details { margin-top: .5em; }
+details details ul { margin-top: .5em; }
 </style>
 </head>
 
@@ -95,6 +97,21 @@ table tr:nth-child(even) {
 <tr><td><code>128.42.5.17 ~ 128.42.5.18</code></td> <td>Find the max mask for 2 IPs</td></tr>
 </tbody>
 </table>
+  <details>
+   <summary>Special-purpose IP attributes</summary>
+<ul>
+<li>S - (source) an address is valid when used as the
+source address of an IP datagram that transits 2 devices.</li>
+<li>D - (destination) an address is valid when used as the destination
+address of an IP datagram that transits 2 devices.</li>
+<li>F - (forwardable) a router may
+forward an IP datagram whose destination address is drawn from this
+allocated block between external interfaces.</li>
+<li>G - (global) an IP datagram whose destination address is drawn from this
+address block is forwardable beyond a specified administrative
+domain.</li>
+</ul>
+  </details>
  </details>
 
  <div id="cidr-calc__form">
