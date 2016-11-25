@@ -9,7 +9,75 @@ let cidr = {};
 	return ("000000000" + n.toString(2)).slice(-8)
     }
 
-    // fcb - four chunks of bytes
+    // RFC6890: Special-Purpose IP Address Registries
+    let special_addr_tbl = {
+	'0.0.0.0/8': {
+	    name: 'This host on this network',
+	    attrs: 'S'
+	},
+	'10.0.0.0/8': {
+	    name: 'Private-Use',
+	    attrs: 'SDF'
+	},
+	'100.64.0.0/10': {
+	    name: 'Shared Address Space',
+	    attrs: 'SDF'
+	},
+	'127.0.0.0/8': {
+	    name: 'Loopback',
+	    attrs: ''
+	},
+	'169.254.0.0/16': {
+	    name: 'Link Local',
+	    attrs: 'SD'
+	},
+	'172.16.0.0/12': {
+	    name: 'Private-Use',
+	    attrs: 'SDF'
+	},
+	'192.0.0.0/24': {
+	    name: 'IETF Protocol Assignments',
+	    attrs: ''
+	},
+	'192.0.0.0/29 ': {
+	    name: 'DS-Lite',
+	    attrs: 'SDF'
+	},
+	'192.0.2.0/24 ': {
+	    name: 'Documentation (TEST-NET-1)',
+	    attrs: ''
+	},
+	'192.88.99.0/24': {
+	    name: '6to4 Relay Anycast',
+	    attrs: 'SDFG'
+	},
+	'192.168.0.0/16': {
+	    name: 'Private-Use',
+	    attrs: 'SDF'
+	},
+	'198.18.0.0/15': {
+	    name: 'Benchmarking',
+	    attrs: 'SDF'
+	},
+	'198.51.100.0/24': {
+	    name: 'Documentation (TEST-NET-2)',
+	    attrs: ''
+	},
+	'203.0.113.0/24': {
+	    name: 'Documentation (TEST-NET-3)',
+	    attrs: ''
+	},
+	'240.0.0.0/4': {
+	    name: 'Reserved',
+	    attrs: ''
+	},
+	'255.255.255.255/32': {
+	    name: 'Limited Broadcast',
+	    attrs: 'D'
+	}
+    }
+
+    // to four chunks of bytes: [[0,1,...], [0,1,...], [0,1,...], [0,1,...]]
     exports.str2ip = function(ip) {
 	return ip.split('.')
 	    .map( val => byte_string(parseInt(val, 10))
@@ -119,6 +187,33 @@ let cidr = {};
 	return n
     }
 
+    let eq = function(ip1, ip2) {
+	let equal = true
+	chunks_map(ip1, ip2, (top, bottom) => {
+	    if (top !== bottom) equal = false
+	})
+	return equal
+    }
+
+    exports.describe = function(ip, mask) {
+	let net = exports.netaddr(ip, mask)
+	let brd = exports.broadcast_addr(ip, mask)
+	let cidr = exports.cidr(mask)
+
+	let type = 'Regular'
+	let subtype = []
+	if (eq(ip, net)) subtype.push('network')
+	if (eq(ip, brd)) subtype.push('broadcast')
+
+	let sp = special_addr_tbl[`${exports.ip2str(net)}/${cidr}`]
+	if (sp) {
+	    type = 'Special-purpose'
+	    subtype = [sp.name]
+	    if (sp.attrs !== '') subtype.push(`attrs=${sp.attrs}`)
+	}
+	return [type, subtype.join(', ')]
+    }
+
     exports.query_parse = function(query) {
 	query = query.replace(/\s+/g, ' ').trim()
 	let m
@@ -208,6 +303,10 @@ if (typeof window === 'object') {
 	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
 	if (r.ip) {
+	    let type = cidr.describe(r.ip, r.mask)
+	    if (type[0] !== 'Regular') type[0] = `<b>${type[0]}</b>`
+	    row('Type', type[0], type[1])
+
 	    row('Address', cidr.ip2str(r.ip), bits(r.ip))
 
 	    let net = cidr.netaddr(r.ip, r.mask)
