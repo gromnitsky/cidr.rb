@@ -2,15 +2,15 @@ def cidr host_bits
   32 - host_bits
 end
 
-def subnet_addr host_bits
-  2**host_bits
-end
-
 def subnet_mask cidr
   '%3d.%3d.%3d.%3d' %
     1.upto(32).map {|bit| bit <= cidr ? 1 : 0 }
     .each_slice(8)
     .map {|val| val.join.to_i 2 }.to_a
+end
+
+def subnet_addr host_bits
+  2**host_bits
 end
 
 rows = 0.upto(24).map do |idx|
