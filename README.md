@@ -5,7 +5,7 @@ for printing & pinning it to the wall.
 
 Includes a simple IP calculator. Works offline.
 
-Example: http://sigwait.tk/cidr/#q=128.42.5.17+%7E+128.42.5.18
+Example: http://sigwait.tk/cidr/#/?q=128.42.5.17+%7E+128.42.5.18
 
 ## Usage
 
@@ -15,7 +15,7 @@ $ ruby cidr.rb
 or
 
 ~~~
-$ ruby cidr.rb html > cidr.html
+$ ruby cidr.rb html > index.html
 $ xdg-open !$
 ~~~
 

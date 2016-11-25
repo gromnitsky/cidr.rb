@@ -201,7 +201,6 @@ let cidr = {};
 	let brd = exports.broadcast_addr(ip, mask)
 	let cidr = exports.cidr(mask)
 
-	let type = 'Regular'
 	let subtype = []
 	if (eq(ip, net)) subtype.push('network')
 	if (eq(ip, brd)) subtype.push('broadcast')
@@ -214,15 +213,21 @@ let cidr = {};
 		let net_loop = exports.netaddr(ip, exports.mask(cidr_loop))
 		if (ip_loop === exports.ip2str(net_loop)) {
 		    let val = special_addr_tbl[key]
-		    type = 'Special-purpose'
 		    subtype = [val.name]
 		    if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
-		    break
+		    return {
+			type: 'Special-purpose',
+			subtype: subtype.join(', '),
+			link: key
+		    }
 		}
 	    }
 	}
 
-	return [type, subtype.join(', ')]
+	return {
+	    type: 'Regular',
+	    subtype: subtype.join(', '),
+	}
     }
 
     exports.query_parse = function(query) {
@@ -310,15 +315,24 @@ if (typeof window === 'object') {
 	    t.push('</tr>')
 	    templ.push(t.join("\n"))
 	}
+	let url = function(url_search_params) {
+	    return `#/?${url_search_params}`
+	}
+	let link = function(to) {
+	    let hash = new URLSearchParams()
+	    hash.set('q', to)
+	    return `<a href="${url(hash)}">${to}</a>`
+	}
 
 	row('CIDR', r.cidr)
-	row('Mask', cidr.ip2str(r.mask), bits(r.mask))
+	row('Mask', link(cidr.ip2str(r.mask)), bits(r.mask))
 	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
 	if (r.ip) {
-	    let type = cidr.describe(r.ip, r.mask)
-	    if (type[0] !== 'Regular') type[0] = `<b>${type[0]}</b>`
-	    row('Type', type[0], type[1])
+	    let desc = cidr.describe(r.ip, r.mask)
+	    if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
+	    if (desc.link) desc.subtype += ', ' + link(desc.link)
+	    row('Type', desc.type, desc.subtype)
 
 	    row('Address', cidr.ip2str(r.ip), bits(r.ip))
 
@@ -340,12 +354,14 @@ if (typeof window === 'object') {
 	out.innerHTML = templ.join("\n")
 
 	// upd location after successful rendering only
-	url_params.set('q', query)
-	location.hash = '#' + url_params
+	if (query !== url_params.get('q')) {
+	    url_params.set('q', query)
+	    window.history.pushState('omglol', 'cidr.rb', url(url_params))
+	}
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-	let params = new URLSearchParams(location.hash.slice(1))
+	let params = new URLSearchParams(location.hash.slice(2))
 	let input = document.getElementById('cidr-calc__input')
 	input.addEventListener('keydown', (evt) => {
 	    if (evt.keyCode === 13) calc(params)
@@ -357,5 +373,10 @@ if (typeof window === 'object') {
 	    input.value = params.get('q')
 	    calc(params)
 	}
+	window.addEventListener("hashchange", _unused => {
+	    params = new URLSearchParams(location.hash.slice(2))
+	    input.value = params.get('q')
+	    calc(params)
+	})
     })
 }
