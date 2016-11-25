@@ -241,8 +241,10 @@ let cidr = {};
 	// 255.255.0.0
 	if ((m = query.match(/^\d+\.\d+\.\d+\.\d+$/)) ) {
 	    let mask = exports.str2ip(query)
+	    let cidr = exports.cidr(mask)
+	    if (!eq(mask, exports.mask(cidr))) throw new Error('invalid mask')
 	    return {
-		cidr: exports.cidr(mask),
+		cidr,
 		mask
 	    }
 	}
