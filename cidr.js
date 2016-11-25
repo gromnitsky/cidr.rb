@@ -35,13 +35,14 @@ let cidr = {};
 	    name: 'Private-Use',
 	    attrs: 'SDF'
 	},
-	'192.0.0.0/24': {
-	    name: 'IETF Protocol Assignments',
-	    attrs: ''
-	},
+	// we write it before /24, otherwise cidr.describe() won't match it
 	'192.0.0.0/29 ': {
 	    name: 'DS-Lite',
 	    attrs: 'SDF'
+	},
+	'192.0.0.0/24': {
+	    name: 'IETF Protocol Assignments',
+	    attrs: ''
 	},
 	'192.0.2.0/24 ': {
 	    name: 'Documentation (TEST-NET-1)',
@@ -205,12 +206,22 @@ let cidr = {};
 	if (eq(ip, net)) subtype.push('network')
 	if (eq(ip, brd)) subtype.push('broadcast')
 
-	let sp = special_addr_tbl[`${exports.ip2str(net)}/${cidr}`]
-	if (sp) {
-	    type = 'Special-purpose'
-	    subtype = [sp.name]
-	    if (sp.attrs !== '') subtype.push(`attrs=${sp.attrs}`)
+	for (let key in special_addr_tbl) {
+	    let [ip_loop, cidr_loop] = key.split('/')
+	    cidr_loop = parseInt(cidr_loop, 10)
+
+	    if (cidr >= cidr_loop) {
+		let net_loop = exports.netaddr(ip, exports.mask(cidr_loop))
+		if (ip_loop === exports.ip2str(net_loop)) {
+		    let val = special_addr_tbl[key]
+		    type = 'Special-purpose'
+		    subtype = [val.name]
+		    if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
+		    break
+		}
+	    }
 	}
+
 	return [type, subtype.join(', ')]
     }
 
