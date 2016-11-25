@@ -93,6 +93,10 @@ let cidr = {};
     exports.hosts_range = function(ip, mask) {
 	let first = exports.netaddr(ip, mask)
 	let min = parseInt(first[3].join(''), 2) + 1
+	if (min > 255) {
+	    // the IP was x.x.x.255
+	    return [ip, ip]
+	}
 	first[3] = exports.str2ip(min.toString())[0]
 
 	let last = exports.broadcast_addr(ip, mask)

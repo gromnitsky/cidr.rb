@@ -118,6 +118,12 @@ suite('CIDR', function() {
 	    mask: cidr.str2ip('255.0.0.0'),
 	    ip: cidr.str2ip('127.0.0.1')
 	})
+
+	assert.deepEqual(cidr.query_parse('255.255.255.255/32'), {
+	    cidr: 32,
+	    mask: cidr.str2ip('255.255.255.255'),
+	    ip: cidr.str2ip('255.255.255.255')
+	})
     })
 
 })
