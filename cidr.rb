@@ -78,6 +78,14 @@ table tr:nth-child(even) {
 details details { margin-top: .5em; }
 details details ul { margin-top: .5em; }
 #cidr-calc__geo { margin-bottom: .5em; }
+.cidr-calc--net {
+  background-color: #005bbb;
+  color: #ffd500;
+}
+.cidr-calc--ip {
+  background-color: #ffd500;
+  color: #005bbb;
+}
 </style>
 </head>
 

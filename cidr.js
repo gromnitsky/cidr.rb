@@ -399,12 +399,21 @@ if (typeof window === 'object') {
 	    hash.set('q', to)
 	    return `<a href="${url(hash)}">${to}</a>`
 	}
+	let bits_paint = function(ip, cidr) {
+	    let idx = 0
+	    return ip.map( chunk => {
+		return chunk.map( bit => {
+		    let kls = idx++ < cidr ? 'cidr-calc--net' : 'cidr-calc--ip'
+		    return `<span class="${kls}"><code>${bit}</code></span>`
+		}).join('')
+	    }).join('<code>&nbsp;</code>')
+	}
 
 	row('CIDR', r.cidr)
 	row('Mask', link(cidr.ip2str(r.mask)), bits(r.mask))
 	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
-	let ip
+	let ip_ddn
 	let geo = new Geo(url_params)
 	if (r.ip) {
 	    let desc = cidr.describe(r.ip, r.mask)
@@ -412,8 +421,8 @@ if (typeof window === 'object') {
 	    if (desc.link) desc.subtype += ', ' + link(desc.link)
 	    row('Type', desc.type, desc.subtype)
 
-	    ip = cidr.ip2str(r.ip)
-	    row('Address', ip, bits(r.ip))
+	    ip_ddn = cidr.ip2str(r.ip)
+	    row('Address', ip_ddn, bits_paint(r.ip, r.cidr))
 
 	    if (desc.type === 'Regular') {
 		templ.push('<tr><td colspan=3>')
@@ -437,7 +446,7 @@ if (typeof window === 'object') {
 
 	templ.push('</table></tbody>')
 	out.innerHTML = templ.join("\n")
-	geo.hook(ip)
+	geo.hook(ip_ddn)
 
 	// upd location after successful rendering only
 	if (query !== url_params.get('q')) {
