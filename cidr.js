@@ -416,9 +416,9 @@ if (typeof window === 'object') {
 	    row('Address', ip, bits(r.ip))
 
 	    if (desc.type === 'Regular') {
-		templ.push('</table></tbody>')
+		templ.push('<tr><td colspan=3>')
 		templ.push(geo.template())
-		templ.push('<table><tbody>')
+		templ.push('</td></tr>')
 	    }
 
 	    let net = cidr.netaddr(r.ip, r.mask)
