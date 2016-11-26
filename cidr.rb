@@ -116,11 +116,13 @@ domain.</li>
  </details>
 
  <div id="cidr-calc__form">
-  <input id="cidr-calc__input" type="text" spellcheck="false">
+  <input id="cidr-calc__input" type="search" spellcheck="false" placeholder="Type, for example, 192.168.1.1/29">
   <button id="cidr-calc__submit">Calc</button>
  </div>
 
- <div id="cidr-calc__result">The query is empty.</div>
+ <div id="cidr-calc__result">
+  <noscript><mark>The calculator requires JavaScript.</mark></noscript>
+ </div>
 </div>
 
 <table>
