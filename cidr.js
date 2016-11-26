@@ -113,7 +113,7 @@ let cidr = {};
 	for (let cidx=0; cidx < arr.length; ++cidx) {
 	    let chunk = []
 	    for (let idx=0; idx < arr[cidx].length; ++idx) {
-		chunk.push(Number(!arr[cidx][idx]))
+		chunk.push(arr[cidx][idx] ^ 1)
 	    }
 	    r.push(chunk)
 	}
