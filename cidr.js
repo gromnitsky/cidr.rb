@@ -292,6 +292,82 @@ let cidr = {};
 
 /* main */
 if (typeof window === 'object') {
+
+    class Geo {
+	constructor(url_params) {
+	    this.debug = url_params.get('debug')
+	}
+
+	template() {
+	    return ['<details id="cidr-calc__geo">',
+		    '<summary>Geographic information</summary>',
+		    '<div>Wait please...</div>',
+		    '</details>'].join("\n")
+	}
+
+	render(data) {
+	    // we ought to validate `data` here but we implicitly
+	    // "trust" ipinfo.io & this is a pet app, so...
+	    let t = ['<table><tbody>']
+	    let row = function(name, item, callback) {
+		if (!item) return
+		t.push(`<tr><td>${name}</td> <td>${callback(item)}</td></tr>`)
+	    }
+	    row('Hostname', data.hostname, (item) => item)
+	    row('City', data.city, (item) => item)
+	    row('Region', data.region, (item) => item)
+	    row('Country', data.country, (item) => item)
+	    row('Coordinates', data.loc, (item) => {
+		let zoom = 5
+		return `<code>${item}</code> <a target="_blank" href='https://maps.google.com/?q=${item}&ll=${item}&z=${zoom}'>Google maps</a>`
+	    })
+	    row('Organization', data.org, (item) => item)
+
+	    if (t.length === 1) throw new Error('no useful data in the payload')
+	    t.push('</table></tbody>')
+	    return t.join("\n")
+	}
+
+	hook(ip) {
+	    let details = document.querySelector('#cidr-calc__geo')
+	    if (!details) return
+	    let was_opened = false
+
+	    details.addEventListener('toggle', () => {
+		if (was_opened) return
+		was_opened = true
+
+		let node = details.querySelector('div')
+		this.fetch(ip).then( r => {
+	    	    node.innerHTML = this.render(r)
+	    	}).catch( err => {
+		    node.innerHTML = `<b>Error:</b> ${err.message}<br>Refresh (<kbd>Ctrl-r</kbd>) the page & try again.`
+		})
+	    })
+	}
+
+	fetch(ip) {
+	    switch (this.debug) {
+	    case '1': return Promise.reject(new Error('fail on purpose'))
+	    case '2': return Promise.resolve({
+		ip,
+		hostname: `${ip}.debug.example.com`,
+		city: "Kiev",
+		region: "Kyiv City",
+		country: "UA",
+		loc: "50.4333,30.5167",
+		org: "AS6849 PJSC Ukrtelecom"
+	    })
+	    case '3': return Promise.resolve({
+		ip,
+		bogon: true
+	    })
+	    default: return fetch(`http://ipinfo.io/${ip}/json`)
+		    .then( r => r.json())
+	    }
+	}
+    }
+
     let calc = function(url_params) {
 	let r
 	let out = document.getElementById('cidr-calc__result')
@@ -319,7 +395,7 @@ if (typeof window === 'object') {
 	    return `#/?${url_search_params}`
 	}
 	let link = function(to) {
-	    let hash = new URLSearchParams()
+	    let hash = new URLSearchParams(url_params.toString())
 	    hash.set('q', to)
 	    return `<a href="${url(hash)}">${to}</a>`
 	}
@@ -328,13 +404,22 @@ if (typeof window === 'object') {
 	row('Mask', link(cidr.ip2str(r.mask)), bits(r.mask))
 	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
 
+	let ip
+	let geo = new Geo(url_params)
 	if (r.ip) {
 	    let desc = cidr.describe(r.ip, r.mask)
 	    if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
 	    if (desc.link) desc.subtype += ', ' + link(desc.link)
 	    row('Type', desc.type, desc.subtype)
 
-	    row('Address', cidr.ip2str(r.ip), bits(r.ip))
+	    ip = cidr.ip2str(r.ip)
+	    row('Address', ip, bits(r.ip))
+
+	    if (desc.type === 'Regular') {
+		templ.push('</table></tbody>')
+		templ.push(geo.template())
+		templ.push('<table><tbody>')
+	    }
 
 	    let net = cidr.netaddr(r.ip, r.mask)
 	    row('Network', cidr.ip2str(net), bits(net))
@@ -352,6 +437,7 @@ if (typeof window === 'object') {
 
 	templ.push('</table></tbody>')
 	out.innerHTML = templ.join("\n")
+	geo.hook(ip)
 
 	// upd location after successful rendering only
 	if (query !== url_params.get('q')) {

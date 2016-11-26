@@ -77,6 +77,7 @@ table tr:nth-child(even) {
 #cidr-calc__result { margin-bottom: 1em; }
 details details { margin-top: .5em; }
 details details ul { margin-top: .5em; }
+#cidr-calc__geo { margin-bottom: .5em; }
 </style>
 </head>
 
