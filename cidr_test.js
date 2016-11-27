@@ -88,6 +88,25 @@ suite('CIDR', function() {
 	assert.deepEqual(cidr.cidr_max(ip1, ip2), 25)
     })
 
+    test('vlsm', function() {
+	assert.throws( () => {
+	    cidr.vlsm(cidr.str2ip('192.168.1.1'), 26, [2, 20])
+	}, /invalid network address/)
+
+	let ip = cidr.str2ip('192.168.1.0')
+	let r = cidr.vlsm(ip, 27, [20, 2])
+	assert.deepEqual(r, {
+	    error: "these subnets didn't fit in: 2",
+	    tbl: [{
+		nhosts: 20,
+		net: cidr.str2ip('192.168.1.0'),
+		cidr: 27,
+		range: [cidr.str2ip('192.168.1.1'),cidr.str2ip('192.168.1.30')],
+		brd: cidr.str2ip('192.168.1.31'),
+	    }]
+	})
+    })
+
     test('query_parse', function() {
 	assert.throws( () => {
 	    cidr.query_parse('huh?')

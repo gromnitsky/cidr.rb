@@ -230,6 +230,80 @@ let cidr = {};
 	}
     }
 
+    exports.vlsm = function(ip, cidr, hosts) {
+	if (cidr < 4 || cidr > 30)
+	    throw new Error('the valid range for cird is [4...30]')
+	let mask = exports.mask(cidr)
+	if (!eq(ip, exports.netaddr(ip, mask)))
+	    throw new Error('invalid network address')
+
+	hosts = Array.from(hosts).sort((a, b) => b - a)
+
+	function cidr_max(hosts_in_net) {
+	    for (let idx = 2; idx <= 32; ++idx) {
+		if ((Math.pow(2, idx) - 2) >= hosts_in_net) {
+		    return 32 - idx
+		}
+	    }
+	    throw new Error(`${hosts_in_net} is too big`)
+	}
+	function adjacent_netaddr(ip) {
+	    ip = ip.map( val => parseInt(val.join(''), 2))
+	    if (ip[3] < 255) {
+		ip[3]++
+	    } else {
+		if (ip[2] < 255) {
+		    ip[3] = 0;
+		    ip[2]++
+		} else {
+		    if (ip[1] < 255) {
+			ip[3] = 0;
+			ip[2] = 0;
+			ip[1]++
+		    } else {
+			ip[3] = 0;
+			ip[2] = 0;
+			ip[1] = 0;
+			ip[0]++
+		    }
+		}
+	    }
+	    return exports.str2ip(ip.join('.'))
+	}
+
+	let result = {
+	    error: null,
+	    tbl: []
+	}
+	let addrs_max = exports.maxhosts(cidr) + 2
+	let addrs_used = 0
+	let idx
+	let net = ip
+	for (idx = 0; idx < hosts.length; ++idx) {
+	    let nhosts = hosts[idx]
+	    let cidr = cidr_max(nhosts)
+	    addrs_used += exports.maxhosts(cidr) + 2
+	    if (addrs_used > addrs_max) break
+
+	    let range = exports.hosts_range(net, exports.mask(cidr))
+	    let brd = adjacent_netaddr(range[1])
+	    result.tbl.push({
+		nhosts,
+		net,
+		cidr,
+		range,
+		brd
+	    })
+
+	    net = adjacent_netaddr(brd)
+	}
+
+	if (idx !== hosts.length)
+	    result.error = `these subnets didn't fit in: ${hosts.slice(idx)}`
+
+	return result
+    }
+
     exports.query_parse = function(query) {
 	query = query.replace(/\s+/g, ' ').trim()
 	let m
