@@ -86,6 +86,10 @@ details details ul { margin-top: .5em; }
   background-color: #ffd500;
   color: #005bbb;
 }
+.cidr-calc--range {
+  white-space: pre;
+  font-family: monospace;
+}
 </style>
 </head>
 

@@ -462,6 +462,14 @@ if (typeof window === 'object') {
 	    this.url_params = url_params
 	}
 
+	row() {
+	    let args = Array.prototype.slice.call(arguments)
+	    let t = ['<tr>']
+	    args.forEach( val => t.push(`<td>${val}</td>`))
+	    t.push('</tr>')
+	    this.templ.push(t.join("\n"))
+	}
+
 	static Url(url_search_params) {
 	    return `#/?${url_search_params}`
 	}
@@ -476,14 +484,45 @@ if (typeof window === 'object') {
     class VlsmRenderer extends Renderer {
 	constructor(data, node, url_params) {
 	    super(data, node, url_params)
-	    this.templ = ['<table><thead><tr>',
-			  '<th title="Hosts required">HR</th>',
-			  '<th title="Hosts available">HA</th>',
-			  '<th title="Hosts wasted">HW</th>',
-			  '<th>Range</th>',
-			  '<th>Network</th>',
-			  '<th>Broadcast</th>',
-			  '</tr></thead>']
+	    this.templ = []
+	}
+
+	pad(ddn) {
+	    let n = 4*3 + 3
+	    return (' '.repeat(n) + ddn).slice(-n)
+	}
+
+	prelude(nets) {
+	    this.templ.push(['<table><thead><tr>',
+			     '<th></th>',
+			     '<th>Max hosts</th>',
+			     '<th>IPs wanted</th>',
+			     '<th>-/- used</th>',
+			     '<th>-/- wasted</th>',
+			     '<th>Subnets wanted</th>',
+			     '<th>-/- created</th>',
+			     '</tr></thead><tbody>'].join("\n"))
+
+	    let ip_wanted = this.data.hosts.reduce( (prev, cur) => {
+		return prev + cur
+	    }, 0)
+	    let ip_used = nets.tbl.reduce( (prev, cur) => {
+		return prev + cur.nhosts
+	    }, 0)
+	    let ip_wasted = nets.tbl.reduce( (prev, cur) => {
+		let mh = cidr.maxhosts(cur.cidr)
+		return prev + mh - cur.nhosts
+	    }, 0)
+	    let net = this.link(cidr.ip2str(this.data.ip) +'/' + this.data.cidr)
+	    let mh = cidr.maxhosts(this.data.cidr)
+
+	    this.row(net, mh, ip_wanted, ip_used, ip_wasted,
+		     this.data.hosts.length, nets.tbl.length)
+	    this.templ.push('</tbody></table>')
+	}
+
+	finish() {
+	    this.node.innerHTML = this.templ.join("\n")
 	}
 
 	start() {
@@ -491,8 +530,22 @@ if (typeof window === 'object') {
 	    if (nets.error)
 		this.templ.push(`<p><b>Error:</b> ${nets.error}</p>`)
 
-	    this.templ.push(`<p>${this.link(cidr.ip2str(this.data.ip) + '/' + this.data.cidr)} max hosts: ${cidr.maxhosts(this.data.cidr)}</p>`)
-	    this.templ.push('<tbody>')
+	    this.prelude(nets)
+	    if (!nets.tbl.length) {
+		this.finish()
+		return
+	    }
+
+	    this.templ.push('<br>')
+	    this.templ.push(['<table><thead><tr>',
+			     '<th title="Hosts required">HR</th>',
+			     '<th title="Hosts available">HA</th>',
+			     '<th title="Hosts wasted">HW</th>',
+			     '<th>Range</th>',
+			     '<th>Network</th>',
+			     '<th>Broadcast</th>',
+			     '</tr></thead><tbody>'].join("\n"))
+
 	    nets.tbl.forEach( val => {
 		let row = ['<tr>']
 
@@ -500,7 +553,7 @@ if (typeof window === 'object') {
 		let ha = cidr.maxhosts(val.cidr)
 		row.push(`<td>${this.link(val.cidr, ha)}</td>`)
 		row.push(`<td>${ha - val.nhosts}</td>`)
-		row.push(`<td>${cidr.ip2str(val.range[0])} — ${cidr.ip2str(val.range[1])}</td>`)
+		row.push(`<td class="cidr-calc--range">${this.pad(cidr.ip2str(val.range[0]))} → ${cidr.ip2str(val.range[1])}</td>`)
 		let net = cidr.ip2str(val.net) + '/' + val.cidr
 		row.push(`<td>${this.link(net)}</td>`)
 		row.push(`<td>${cidr.ip2str(val.brd)}</td>`)
@@ -510,7 +563,7 @@ if (typeof window === 'object') {
 	    })
 
 	    this.templ.push('</tbody></table>')
-	    this.node.innerHTML = this.templ.join("\n")
+	    this.finish()
 	}
     }
 
@@ -520,14 +573,6 @@ if (typeof window === 'object') {
 
 	    this.templ = ['<table><tbody>']
 	    this.geo = new Geo(url_params)
-	}
-
-	row() {
-	    let args = Array.prototype.slice.call(arguments)
-	    let t = ['<tr>']
-	    args.forEach( val => t.push(`<td>${val}</td>`))
-	    t.push('</tr>')
-	    this.templ.push(t.join("\n"))
 	}
 
 	static Bits(ip) {
