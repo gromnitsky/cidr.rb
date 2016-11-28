@@ -3,7 +3,8 @@
 Renders IPv4 CIDR blocks in console or browser. The latter is suitable
 for printing & pinning it to the wall.
 
-Includes a simple IP calculator. Works offline.
+Includes a simple CIDR/VLSM calculator. Works offline (except for geo
+ip info).
 
 Example: http://sigwait.tk/cidr/#/?q=128.42.5.17+%7E+128.42.5.18
 

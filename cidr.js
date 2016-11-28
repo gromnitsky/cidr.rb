@@ -162,14 +162,12 @@ let cidr = {};
     exports.hosts_range = function(ip, mask) {
 	let first = exports.netaddr(ip, mask)
 	let min = parseInt(first[3].join(''), 2) + 1
-	if (min > 255) {
-	    // the IP was x.x.x.255
-	    return [ip, ip]
-	}
+	if (min > 255) min = 255
 	first[3] = exports.str2ip(min.toString())[0]
 
 	let last = exports.broadcast_addr(ip, mask)
 	let max = parseInt(last[3].join(''), 2) - 1
+	if (max < 0) max = 0
 	last[3] = exports.str2ip(max.toString())[0]
 
 	return [first, last]
@@ -237,7 +235,9 @@ let cidr = {};
 	if (!eq(ip, exports.netaddr(ip, mask)))
 	    throw new Error('invalid network address')
 
-	hosts = Array.from(hosts).sort((a, b) => b - a)
+	hosts = Array.from(hosts).filter( val => val > 0)
+	if (!hosts.length) throw new Error('invalid subnet spec')
+	hosts = hosts.sort((a, b) => b - a)
 
 	function cidr_max(hosts_in_net) {
 	    for (let idx = 2; idx <= 32; ++idx) {
@@ -247,6 +247,7 @@ let cidr = {};
 	    }
 	    throw new Error(`${hosts_in_net} is too big`)
 	}
+	// FIXME
 	function adjacent_netaddr(ip) {
 	    ip = ip.map( val => parseInt(val.join(''), 2))
 	    if (ip[3] < 255) {
@@ -299,7 +300,7 @@ let cidr = {};
 	}
 
 	if (idx !== hosts.length)
-	    result.error = `these subnets didn't fit in: ${hosts.slice(idx)}`
+	    result.error = `some of subnets didn't fit in: ${hosts.slice(idx)}`
 
 	return result
     }
@@ -345,6 +346,18 @@ let cidr = {};
 		cidr,
 		mask: exports.mask(cidr),
 		ip: exports.str2ip(m[1]),
+	    }
+	}
+	// 192.168.1.1/26 20,2,7,1
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+) ([0-9,]+)$/)) ) {
+	    let cidr = parseInt(m[2], 10)
+	    let hosts = m[3].split(',').map( val => parseInt(val, 10))
+	    return {
+		type: 'vlsm',
+		cidr,
+		mask: exports.mask(cidr),
+		ip: exports.str2ip(m[1]),
+		hosts
 	    }
 	}
 
@@ -442,6 +455,139 @@ if (typeof window === 'object') {
 	}
     }
 
+    class Renderer {
+	constructor(data, node, url_params) {
+	    this.data = data
+	    this.node = node
+	    this.url_params = url_params
+	}
+
+	static Url(url_search_params) {
+	    return `#/?${url_search_params}`
+	}
+
+	link(to, text) {
+	    let hash = new URLSearchParams(this.url_params.toString())
+	    hash.set('q', to)
+	    return `<a href="${Renderer.Url(hash)}">${text || to}</a>`
+	}
+    }
+
+    class VlsmRenderer extends Renderer {
+	constructor(data, node, url_params) {
+	    super(data, node, url_params)
+	    this.templ = ['<table><thead><tr>',
+			  '<th title="Hosts required">HR</th>',
+			  '<th title="Hosts available">HA</th>',
+			  '<th title="Hosts wasted">HW</th>',
+			  '<th>Range</th>',
+			  '<th>Network</th>',
+			  '<th>Broadcast</th>',
+			  '</tr></thead>']
+	}
+
+	start() {
+	    let nets = cidr.vlsm(this.data.ip, this.data.cidr, this.data.hosts)
+	    if (nets.error)
+		this.templ.push(`<p><b>Error:</b> ${nets.error}</p>`)
+
+	    this.templ.push(`<p>${this.link(cidr.ip2str(this.data.ip) + '/' + this.data.cidr)} max hosts: ${cidr.maxhosts(this.data.cidr)}</p>`)
+	    this.templ.push('<tbody>')
+	    nets.tbl.forEach( val => {
+		let row = ['<tr>']
+
+		row.push(`<td>${val.nhosts}</td>`)
+		let ha = cidr.maxhosts(val.cidr)
+		row.push(`<td>${this.link(val.cidr, ha)}</td>`)
+		row.push(`<td>${ha - val.nhosts}</td>`)
+		row.push(`<td>${cidr.ip2str(val.range[0])} — ${cidr.ip2str(val.range[1])}</td>`)
+		let net = cidr.ip2str(val.net) + '/' + val.cidr
+		row.push(`<td>${this.link(net)}</td>`)
+		row.push(`<td>${cidr.ip2str(val.brd)}</td>`)
+
+		row.push('</tr>')
+		this.templ.push(row.join("\n"))
+	    })
+
+	    this.templ.push('</tbody></table>')
+	    this.node.innerHTML = this.templ.join("\n")
+	}
+    }
+
+    class IPRenderer extends Renderer {
+	constructor(data, node, url_params) {
+	    super(data, node, url_params)
+
+	    this.templ = ['<table><tbody>']
+	    this.geo = new Geo(url_params)
+	}
+
+	row() {
+	    let args = Array.prototype.slice.call(arguments)
+	    let t = ['<tr>']
+	    args.forEach( val => t.push(`<td>${val}</td>`))
+	    t.push('</tr>')
+	    this.templ.push(t.join("\n"))
+	}
+
+	static Bits(ip) {
+	    return '<code>' + ip.map( val => val.join('')).join(' ') + '</code>'
+	}
+
+	static Bits_paint(ip, cidr) {
+	    let idx = 0
+	    return ip.map( chunk => {
+		return chunk.map( bit => {
+		    let kls = idx++ < cidr ? 'cidr-calc--net' : 'cidr-calc--ip'
+		    return `<span class="${kls}"><code>${bit}</code></span>`
+		}).join('')
+	    }).join('<code>&nbsp;</code>')
+	}
+
+	start() {
+	    let r = this.data
+
+	    this.row('CIDR', r.cidr)
+	    this.row('Mask', this.link(cidr.ip2str(r.mask)),
+		     IPRenderer.Bits(r.mask))
+	    this.row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
+
+	    let ip_ddn
+	    if (r.ip) {
+		let desc = cidr.describe(r.ip, r.mask)
+		if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
+		if (desc.link) desc.subtype += ', ' + this.link(desc.link)
+		this.row('Type', desc.type, desc.subtype)
+
+		ip_ddn = cidr.ip2str(r.ip)
+		this.row('Address', ip_ddn, IPRenderer.Bits_paint(r.ip, r.cidr))
+
+		if (desc.type === 'Regular') {
+		    this.templ.push('<tr><td colspan=3>')
+		    this.templ.push(this.geo.template())
+		    this.templ.push('</td></tr>')
+		}
+
+		let net = cidr.netaddr(r.ip, r.mask)
+		this.row('Network', cidr.ip2str(net), IPRenderer.Bits(net))
+
+		let brd = cidr.broadcast_addr(r.ip, r.mask)
+		this.row('Broadcast', cidr.ip2str(brd), IPRenderer.Bits(brd))
+
+		let host = cidr.hostaddr(r.ip, r.mask)
+		this.row('Host', cidr.ip2str(host), IPRenderer.Bits(host))
+
+		let range = cidr.hosts_range(r.ip, r.mask)
+		this.row('Begin', cidr.ip2str(range[0]))
+		this.row('End', cidr.ip2str(range[1]))
+	    }
+
+	    this.templ.push('</tbody></table>')
+	    this.node.innerHTML = this.templ.join("\n")
+	    this.geo.hook(ip_ddn)
+	}
+    }
+
     let calc = function(url_params) {
 	let r
 	let out = document.getElementById('cidr-calc__result')
@@ -453,79 +599,17 @@ if (typeof window === 'object') {
 	    return
 	}
 
-	let templ = ['<table><tbody>']
-
-	let bits = function(arr) {
-	    return '<code>' + arr.map( val => val.join('')).join(' ') + '</code>'
+	let engine = {
+	    vlsm: VlsmRenderer
 	}
-	let row = function() {
-	    let args = Array.prototype.slice.call(arguments)
-	    let t = ['<tr>']
-	    args.forEach( val => t.push(`<td>${val}</td>`))
-	    t.push('</tr>')
-	    templ.push(t.join("\n"))
-	}
-	let url = function(url_search_params) {
-	    return `#/?${url_search_params}`
-	}
-	let link = function(to) {
-	    let hash = new URLSearchParams(url_params.toString())
-	    hash.set('q', to)
-	    return `<a href="${url(hash)}">${to}</a>`
-	}
-	let bits_paint = function(ip, cidr) {
-	    let idx = 0
-	    return ip.map( chunk => {
-		return chunk.map( bit => {
-		    let kls = idx++ < cidr ? 'cidr-calc--net' : 'cidr-calc--ip'
-		    return `<span class="${kls}"><code>${bit}</code></span>`
-		}).join('')
-	    }).join('<code>&nbsp;</code>')
-	}
-
-	row('CIDR', r.cidr)
-	row('Mask', link(cidr.ip2str(r.mask)), bits(r.mask))
-	row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
-
-	let ip_ddn
-	let geo = new Geo(url_params)
-	if (r.ip) {
-	    let desc = cidr.describe(r.ip, r.mask)
-	    if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
-	    if (desc.link) desc.subtype += ', ' + link(desc.link)
-	    row('Type', desc.type, desc.subtype)
-
-	    ip_ddn = cidr.ip2str(r.ip)
-	    row('Address', ip_ddn, bits_paint(r.ip, r.cidr))
-
-	    if (desc.type === 'Regular') {
-		templ.push('<tr><td colspan=3>')
-		templ.push(geo.template())
-		templ.push('</td></tr>')
-	    }
-
-	    let net = cidr.netaddr(r.ip, r.mask)
-	    row('Network', cidr.ip2str(net), bits(net))
-
-	    let brd = cidr.broadcast_addr(r.ip, r.mask)
-	    row('Broadcast', cidr.ip2str(brd), bits(brd))
-
-	    let host = cidr.hostaddr(r.ip, r.mask)
-	    row('Host', cidr.ip2str(host), bits(host))
-
-	    let range = cidr.hosts_range(r.ip, r.mask)
-	    row('Begin', cidr.ip2str(range[0]))
-	    row('End', cidr.ip2str(range[1]))
-	}
-
-	templ.push('</table></tbody>')
-	out.innerHTML = templ.join("\n")
-	geo.hook(ip_ddn)
+	let klass = engine[r.type] || IPRenderer;
+	(new klass(r, out, url_params)).start()
 
 	// upd location after successful rendering only
 	if (query !== url_params.get('q')) {
 	    url_params.set('q', query)
-	    window.history.pushState('omglol', 'cidr.rb', url(url_params))
+	    window.history.pushState('omglol', 'cidr.rb',
+				     Renderer.Url(url_params))
 	}
     }
 

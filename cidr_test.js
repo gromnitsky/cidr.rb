@@ -93,10 +93,18 @@ suite('CIDR', function() {
 	    cidr.vlsm(cidr.str2ip('192.168.1.1'), 26, [2, 20])
 	}, /invalid network address/)
 
+	assert.throws( () => {
+	    cidr.vlsm(cidr.str2ip('192.168.1.0'), 26, [])
+	}, /invalid subnet spec/)
+
+	assert.throws( () => {
+	    cidr.vlsm(cidr.str2ip('192.168.1.0'), 26, [-1, 0])
+	}, /invalid subnet spec/)
+
 	let ip = cidr.str2ip('192.168.1.0')
 	let r = cidr.vlsm(ip, 27, [20, 2])
 	assert.deepEqual(r, {
-	    error: "these subnets didn't fit in: 2",
+	    error: "some of subnets didn't fit in: 2",
 	    tbl: [{
 		nhosts: 20,
 		net: cidr.str2ip('192.168.1.0'),
@@ -133,6 +141,14 @@ suite('CIDR', function() {
 	})
 
 	assert.deepEqual(cidr.query_parse('127.0.0.1/8'), {
+	    cidr: 8,
+	    mask: cidr.str2ip('255.0.0.0'),
+	    ip: cidr.str2ip('127.0.0.1')
+	})
+
+	assert.deepEqual(cidr.query_parse('127.0.0.1/8 20,10,1,0,3'), {
+	    type: 'vlsm',
+	    hosts: [20,10,1,0,3],
 	    cidr: 8,
 	    mask: cidr.str2ip('255.0.0.0'),
 	    ip: cidr.str2ip('127.0.0.1')
