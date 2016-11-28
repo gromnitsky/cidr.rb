@@ -55,13 +55,16 @@ if $0 == __FILE__
   }
   #cidr-calc { display: none; }
 }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
 table {
   width: 100%;
   border-collapse: collapse;
 }
 table th {
   background-color: lightgoldenrodyellow;
-  text-align: center !important;
+  border-left: 1px solid white;
+  border-bottom: 1px solid white;
 }
 table tr:nth-child(even) {
   background-color: #fafafa;

@@ -411,7 +411,7 @@ if (typeof window === 'object') {
 	    row('Organization', data.org, (item) => item)
 
 	    if (t.length === 1) throw new Error('no useful data in the payload')
-	    t.push('</table></tbody>')
+	    t.push('</tbody></table>')
 	    return t.join("\n")
 	}
 
@@ -493,14 +493,21 @@ if (typeof window === 'object') {
 	}
 
 	prelude(nets) {
-	    this.templ.push(['<table><thead><tr>',
+	    this.templ.push(['<table><thead>',
+			     '<tr>',
+			     '<th></th>',
+			     '<th></th>',
+			     '<th colspan="3">IPs</th>',
+			     '<th colspan="2">Subnets</th>',
+			     '</tr>',
+			     '<tr>',
 			     '<th></th>',
 			     '<th>Max hosts</th>',
-			     '<th>IPs wanted</th>',
-			     '<th>-/- used</th>',
-			     '<th>-/- wasted</th>',
-			     '<th>Subnets wanted</th>',
-			     '<th>-/- created</th>',
+			     '<th>Requested</th>',
+			     '<th>Used</th>',
+			     '<th>Wasted</th>',
+			     '<th>Expected</th>',
+			     '<th>Created</th>',
 			     '</tr></thead><tbody>'].join("\n"))
 
 	    let ip_wanted = this.data.hosts.reduce( (prev, cur) => {
@@ -538,7 +545,7 @@ if (typeof window === 'object') {
 
 	    this.templ.push('<br>')
 	    this.templ.push(['<table><thead><tr>',
-			     '<th title="Hosts required">HR</th>',
+			     '<th title="Hosts requested">HR</th>',
 			     '<th title="Hosts available">HA</th>',
 			     '<th title="Hosts wasted">HW</th>',
 			     '<th>Range</th>',
