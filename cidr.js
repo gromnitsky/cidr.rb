@@ -549,7 +549,7 @@ if (typeof window === 'object') {
 			     '<th title="Hosts requested">HR</th>',
 			     '<th title="Hosts available">HA</th>',
 			     '<th title="Hosts wasted">HW</th>',
-			     '<th>Range</th>',
+			     '<th>Requested range</th>',
 			     '<th>Network</th>',
 			     '<th>Broadcast</th>',
 			     '</tr></thead><tbody>'].join("\n"))
@@ -562,7 +562,7 @@ if (typeof window === 'object') {
 		row.push(`<td>${this.link(val.net.cidr, ha)}</td>`)
 		row.push(`<td>${ha - val.nhosts}</td>`)
 		let range = val.net.range()
-		row.push(`<td class="cidr-calc--range">${this.pad(range[0])} — ${range[1]}</td>`)
+		row.push(`<td class="cidr-calc--range">${this.pad(range[0])} — ${new cidr.IPv4(range[0] + val.nhosts - 1)}</td>`)
 		row.push(`<td>${this.link(val.net)}</td>`)
 		row.push(`<td>${val.net.broadcast()}</td>`)
 
