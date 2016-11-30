@@ -3,12 +3,6 @@
 let cidr = {};
 
 (function(exports) {
-    let byte_string = function(n) {
-	if (n < 0 || n > 255 || n % 1 !== 0)
-	    throw new Error(n + " doesn't fit in 1 byte")
-	return ("000000000" + n.toString(2)).slice(-8)
-    }
-
     // RFC6890: Special-Purpose IP Address Registries
     let special_addr_tbl = {
 	'0.0.0.0/8': {
@@ -35,7 +29,7 @@ let cidr = {};
 	    name: 'Private-Use',
 	    attrs: 'SDF'
 	},
-	// we write it before /24, otherwise cidr.describe() won't match it
+	// we write it before /24, otherwise Net#describe() won't match it
 	'192.0.0.0/29 ': {
 	    name: 'DS-Lite',
 	    attrs: 'SDF'
@@ -68,242 +62,247 @@ let cidr = {};
 	    name: 'Documentation (TEST-NET-3)',
 	    attrs: ''
 	},
-	'240.0.0.0/4': {
-	    name: 'Reserved',
-	    attrs: ''
-	},
 	'255.255.255.255/32': {
 	    name: 'Limited Broadcast',
 	    attrs: 'D'
+	},
+	'240.0.0.0/4': {
+	    name: 'Reserved',
+	    attrs: ''
 	}
     }
 
-    // to four chunks of bytes: [[0,1,...], [0,1,...], [0,1,...], [0,1,...]]
-    exports.str2ip = function(ip) {
-	return ip.split('.')
-	    .map( val => byte_string(parseInt(val, 10))
-		  .split('').map( ch => parseInt(ch, 2)))
+    let byte_str = function(n) {
+	if (n < 0 || n > 255 || n % 1 !== 0)
+	    throw new Error(n + " doesn't fit in 1 byte")
+	return ("000000000" + n.toString(2)).slice(-8)
     }
 
-    exports.ip2str = function(arr) {
-	return arr.map( val => parseInt(val.join(''), 2)).join('.')
-    }
-
-    let chunks_map = function(arr1, arr2, cb) {
-	let r = []
-	for (let cidx=0; cidx < arr1.length; ++cidx) {
-	    let chunk = []
-	    for (let idx=0; idx < arr1[cidx].length; ++idx) {
-		chunk.push(cb(arr1[cidx][idx], arr2[cidx][idx]))
-	    }
-	    r.push(chunk)
-	}
-	return r
-    }
-
-    exports.netaddr = function(ip, mask) {
-	return chunks_map(ip, mask, (top, bottom) => {
-	    return top & bottom
-	})
-    }
-
-    exports.ip_invert = function(arr) {
-	let r = []
-
-	for (let cidx=0; cidx < arr.length; ++cidx) {
-	    let chunk = []
-	    for (let idx=0; idx < arr[cidx].length; ++idx) {
-		chunk.push(arr[cidx][idx] ^ 1)
-	    }
-	    r.push(chunk)
-	}
-	return r
-    }
-
-    exports.broadcast_addr = function(ip, mask) {
-	return chunks_map(ip, exports.ip_invert(mask), (top, bottom) => {
-	    return top | bottom
-	})
-    }
-
-    exports.hostaddr = function(ip, mask) {
-	return chunks_map(ip, exports.ip_invert(mask), (top, bottom) => {
-	    return top & bottom
-	})
-    }
-
-    exports.mask = function(cidr) {
-	if (cidr < 0 || cidr > 32) throw new Error("invalid value for cidr")
-	let bits = Array(cidr).fill(1)
-	let zeros = Array(32 - bits.length).fill(0)
-	let arr = bits.concat(zeros)
-	let r = []
-	let chunk = []
-	for (let idx = 0; idx < arr.length; ++idx) {
-	    if (idx % 8 === 0) {
-		if (idx !== 0) r.push(chunk)
-		chunk = []
-	    }
-	    chunk.push(arr[idx])
-	}
-	r.push(chunk)
-	return r
-    }
-
-    exports.cidr = function(mask) {
-	let flatten = [].concat.apply([], mask)
-	return flatten.reduce( (prev, cur) => prev + cur, 0)
-    }
-
-    exports.maxhosts = function(cidr) {
-	return Math.pow(2, (32 - cidr)) - 2
-    }
-
-    exports.hosts_range = function(ip, mask) {
-	let first = exports.netaddr(ip, mask)
-	let min = parseInt(first[3].join(''), 2) + 1
-	if (min > 255) min = 255
-	first[3] = exports.str2ip(min.toString())[0]
-
-	let last = exports.broadcast_addr(ip, mask)
-	let max = parseInt(last[3].join(''), 2) - 1
-	if (max < 0) max = 0
-	last[3] = exports.str2ip(max.toString())[0]
-
-	return [first, last]
-    }
-
-    exports.cidr_max = function(ip1, ip2) {
-	let in_common = true
-	let n = 0
-	chunks_map(ip1, ip2, (top, bottom) => {
-	    if (in_common && top === bottom) {
-		++n
+    class IPv4 {
+	constructor(spec) {
+	    if (Number.isInteger(spec)) {
+		this.addr = spec
+	    } else if (spec instanceof IPv4) {
+		this.addr = spec.addr
 	    } else {
-		in_common = false
+		// DDN (dot-decimal notation)
+		this.addr = parseInt(spec.split('.')
+				     .map( val => byte_str(parseInt(val, 10)))
+				     .join(''), 2)
 	    }
-	})
-	return n
-    }
-
-    let eq = function(ip1, ip2) {
-	let equal = true
-	chunks_map(ip1, ip2, (top, bottom) => {
-	    if (top !== bottom) equal = false
-	})
-	return equal
-    }
-
-    exports.describe = function(ip, mask) {
-	let net = exports.netaddr(ip, mask)
-	let brd = exports.broadcast_addr(ip, mask)
-	let cidr = exports.cidr(mask)
-
-	let subtype = []
-	if (eq(ip, net)) subtype.push('network')
-	if (eq(ip, brd)) subtype.push('broadcast')
-
-	for (let key in special_addr_tbl) {
-	    let [ip_loop, cidr_loop] = key.split('/')
-	    cidr_loop = parseInt(cidr_loop, 10)
-
-	    if (cidr >= cidr_loop) {
-		let net_loop = exports.netaddr(ip, exports.mask(cidr_loop))
-		if (ip_loop === exports.ip2str(net_loop)) {
-		    let val = special_addr_tbl[key]
-		    subtype = [val.name]
-		    if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
-		    return {
-			type: 'Special-purpose',
-			subtype: subtype.join(', '),
-			link: key
-		    }
-		}
-	    }
+	    if (this.addr < IPv4.MIN || this.addr > IPv4.MAX)
+		throw new Error(`invalid number: ${this.addr}`)
 	}
 
-	return {
-	    type: 'Regular',
-	    subtype: subtype.join(', '),
+	valueOf() {
+	    return this.addr
+	}
+
+	eq(to) {
+	    if (!to) return false
+	    return this.addr === (new IPv4(to)).addr
+	}
+
+	_arr() {
+	    let a = (this.addr & (0xff << 24)) >>> 24
+	    let b = (this.addr & (0xff << 16)) >>> 16
+	    let c = (this.addr & (0xff << 8)) >>> 8
+	    let d = this.addr & 0xff
+	    return [a, b, c, d]
+	}
+
+	toString() {
+	    return this._arr().join('.')
+	}
+
+	inspect() {
+	    return `#<${this.constructor.name}: ${this}>`
+	}
+
+	to_a() {
+	    return this._arr().map( val => byte_str(val)
+				    .split('')
+				    .map( bit => parseInt(bit, 10)))
+	}
+
+	reverse() {
+	    return [0,1,2,3].map( val => (this.addr >> (8 * val)) & 0xff)
+		.join('.') + '.in-addr.arpa'
 	}
     }
+    IPv4.MIN = 0
+    IPv4.MAX = 0xffffffff
+    exports.IPv4 = IPv4
 
-    exports.vlsm = function(ip, cidr, hosts) {
-	if (cidr < 4 || cidr > 30)
-	    throw new Error('the valid range for cird is [4...30]')
-	let mask = exports.mask(cidr)
-	if (!eq(ip, exports.netaddr(ip, mask)))
-	    throw new Error('invalid network address')
-
-	hosts = Array.from(hosts).filter( val => val > 0)
-	if (!hosts.length) throw new Error('invalid subnet spec')
-	hosts = hosts.sort((a, b) => b - a)
-
-	function cidr_max(hosts_in_net) {
-	    for (let idx = 2; idx <= 32; ++idx) {
-		if ((Math.pow(2, idx) - 2) >= hosts_in_net) {
-		    return 32 - idx
-		}
-	    }
-	    throw new Error(`${hosts_in_net} is too big`)
-	}
-	// FIXME
-	function adjacent_netaddr(ip) {
-	    ip = ip.map( val => parseInt(val.join(''), 2))
-	    if (ip[3] < 255) {
-		ip[3]++
+    class Net {
+	constructor(ip, mask_or_cidr) {
+	    if (ip instanceof IPv4) {
+		this.ip = ip
 	    } else {
-		if (ip[2] < 255) {
-		    ip[3] = 0;
-		    ip[2]++
+		this.ip = new IPv4(ip)
+	    }
+	    if (Number.isInteger(mask_or_cidr)) {
+		this.cidr = mask_or_cidr
+		this.mask = Net.Mask(this.cidr)
+	    } else {
+		this.mask = mask_or_cidr
+		this.cidr = Net.Cidr(this.mask)
+	    }
+	}
+
+	static Mask(cidr) {
+	    if (cidr < 0 || cidr > 32) throw new Error(`invalid cidr: ${cidr}`)
+	    let ones = Array(cidr).fill(1)
+	    let zeros = Array(32 - ones.length).fill(0)
+	    let dec = parseInt(ones.concat(zeros).join(''), 2)
+	    return new IPv4(dec)
+	}
+
+	static Cidr(mask) {
+	    let flatten = [].concat.apply([], mask.to_a())
+	    let cidr = flatten.reduce( (prev, cur) => prev + cur, 0)
+	    if (!mask.eq(Net.Mask(cidr)))
+		throw new Error(`invalid mask: ${mask}`)
+	    return cidr
+	}
+
+	toString() {
+	    return this.ip.toString() + '/' + this.cidr
+	}
+
+	inspect() {
+	    return `#<${this.constructor.name}: ${this}>`
+	}
+
+	netaddr() {
+	    return new IPv4((this.ip & this.mask) >>> 0)
+	}
+
+	_brd() {
+	    return (this.ip | ~this.mask) >>> 0
+	}
+
+	broadcast() {
+	    return this.cidr <= 30 ? new IPv4(this._brd()) : null
+	}
+
+	hostaddr() {
+	    return new IPv4((this.ip & ~this.mask) >>> 0)
+	}
+
+	maxhosts() {
+	    let mh = Net.Maxhosts(this.cidr)
+	    return mh >= 0 ? mh : 0
+	}
+
+	static Maxhosts(cidr) {
+	    return Math.pow(2, (32 - cidr)) - 2
+	}
+
+	range() {
+	    if (cidr === 32) return null
+
+	    let first = this.cidr <= 30 ? this.netaddr() + 1 : this.netaddr()
+	    let last = this.cidr <= 30 ? this._brd() - 1 : this._brd()
+	    return [new IPv4(first), new IPv4(last)]
+	}
+
+	static Cidr_max(ip1, ip2) {
+	    let arr1 = [].concat.apply([], ip1.to_a())
+	    let arr2 = [].concat.apply([], ip2.to_a())
+	    let n = 0
+	    for (let idx = 0; idx < arr1.length; ++idx) {
+		if (arr1[idx] === arr2[idx]) {
+		    ++n
 		} else {
-		    if (ip[1] < 255) {
-			ip[3] = 0;
-			ip[2] = 0;
-			ip[1]++
-		    } else {
-			ip[3] = 0;
-			ip[2] = 0;
-			ip[1] = 0;
-			ip[0]++
+		    break
+		}
+	    }
+	    return n
+	}
+
+	describe() {
+	    let subtype = []
+	    if (this.ip.eq(this.netaddr())) subtype.push('network')
+	    if (this.ip.eq(this.broadcast())) subtype.push('broadcast')
+
+	    for (let key in special_addr_tbl) {
+		let [ip_loop, cidr_loop] = key.split('/')
+		ip_loop = new IPv4(ip_loop)
+		cidr_loop = parseInt(cidr_loop, 10)
+
+		if (this.cidr >= cidr_loop) {
+		    let netaddr_loop = new Net(this.ip, cidr_loop).netaddr()
+
+		    if (ip_loop.eq(netaddr_loop)) {
+			let val = special_addr_tbl[key]
+			subtype = [val.name]
+			if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
+			return {
+			    type: 'Special-purpose',
+			    subtype: subtype.join(', '),
+			    link: key
+			}
 		    }
 		}
 	    }
-	    return exports.str2ip(ip.join('.'))
+
+	    return {
+		type: 'Regular',
+		subtype: subtype.join(', '),
+	    }
 	}
 
-	let result = {
-	    error: null,
-	    tbl: []
+	vlsm(hosts) {
+	    if (this.cidr < 4 || this.cidr > 30)
+		throw new Error('the valid range for cird is [4...30]')
+	    if (!this.ip.eq(this.netaddr()))
+		throw new Error(`invalid network address: ${this.ip}`)
+
+	    hosts = Array.from(hosts).filter( val => val > 0)
+	    if (!hosts.length) throw new Error('invalid subnet spec')
+	    hosts = hosts.sort((a, b) => b - a)
+
+	    function cidr_max(hosts_in_net) {
+		for (let idx = 2; idx <= 32; ++idx) {
+		    if ((Math.pow(2, idx) - 2) >= hosts_in_net) {
+			return 32 - idx
+		    }
+		}
+		throw new Error(`${hosts_in_net} is too big`)
+	    }
+
+	    let result = {
+		error: null,
+		tbl: []
+	    }
+	    let addrs_max = this.maxhosts() + 2
+	    let addrs_used = 0
+	    let idx
+	    let ip_loop = this.ip
+	    for (idx = 0; idx < hosts.length; ++idx) {
+		let nhosts = hosts[idx]
+		let cidr_loop = cidr_max(nhosts)
+		addrs_used += Net.Maxhosts(cidr_loop) + 2
+		if (addrs_used > addrs_max) break
+
+		let net = new Net(new IPv4(ip_loop), cidr_loop)
+		let range = net.range()
+		result.tbl.push({
+		    nhosts,
+		    net
+		})
+
+		ip_loop = range[1] + 2
+	    }
+
+	    if (idx !== hosts.length)
+		result.error = `some of subnets didn't fit in: ${hosts.slice(idx)}`
+
+	    return result
 	}
-	let addrs_max = exports.maxhosts(cidr) + 2
-	let addrs_used = 0
-	let idx
-	let net = ip
-	for (idx = 0; idx < hosts.length; ++idx) {
-	    let nhosts = hosts[idx]
-	    let cidr = cidr_max(nhosts)
-	    addrs_used += exports.maxhosts(cidr) + 2
-	    if (addrs_used > addrs_max) break
-
-	    let range = exports.hosts_range(net, exports.mask(cidr))
-	    let brd = adjacent_netaddr(range[1])
-	    result.tbl.push({
-		nhosts,
-		net,
-		cidr,
-		range,
-		brd
-	    })
-
-	    net = adjacent_netaddr(brd)
-	}
-
-	if (idx !== hosts.length)
-	    result.error = `some of subnets didn't fit in: ${hosts.slice(idx)}`
-
-	return result
     }
+    exports.Net = Net
 
     exports.query_parse = function(query) {
 	query = query.replace(/\s+/g, ' ').trim()
@@ -313,29 +312,28 @@ let cidr = {};
 	if ((m = query.match(/^\/?(\d+)$/)) ) {
 	    let cidr = parseInt(m[1], 10)
 	    return {
+		type: 'cidr',
 		cidr,
-		mask: exports.mask(cidr)
+		mask: Net.Mask(cidr)
 	    }
 	}
 
 	// 255.255.0.0
 	if ((m = query.match(/^\d+\.\d+\.\d+\.\d+$/)) ) {
-	    let mask = exports.str2ip(query)
-	    let cidr = exports.cidr(mask)
-	    if (!eq(mask, exports.mask(cidr))) throw new Error('invalid mask')
+	    let mask = new IPv4(query)
 	    return {
-		cidr,
+		type: 'cidr',
+		cidr: Net.Cidr(mask),
 		mask
 	    }
 	}
 
 	// 192.168.1.1 255.255.0.0
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) (\d+\.\d+\.\d+\.\d+)$/)) ) {
-	    let mask = exports.str2ip(m[2])
+	    let mask = new IPv4(m[2])
 	    return {
-		cidr: exports.cidr(mask),
-		mask,
-		ip: exports.str2ip(m[1]),
+		type: 'net',
+		net: new Net(m[1], Net.Cidr(mask))
 	    }
 	}
 
@@ -343,9 +341,8 @@ let cidr = {};
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
 	    let cidr = parseInt(m[2], 10)
 	    return {
-		cidr,
-		mask: exports.mask(cidr),
-		ip: exports.str2ip(m[1]),
+		type: 'net',
+		net: new Net(m[1], cidr)
 	    }
 	}
 	// 192.168.1.1/26 20,2,7,1
@@ -354,28 +351,25 @@ let cidr = {};
 	    let hosts = m[3].split(',').map( val => parseInt(val, 10))
 	    return {
 		type: 'vlsm',
-		cidr,
-		mask: exports.mask(cidr),
-		ip: exports.str2ip(m[1]),
+		net: new Net(m[1], cidr),
 		hosts
 	    }
 	}
 
 	// 128.42.5.17 ~ 128.42.5.67
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) ?~ ?(\d+\.\d+\.\d+\.\d+)$/)) ) {
-	    let cidr = exports.cidr_max(exports.str2ip(m[1]),
-					exports.str2ip(m[2]))
+	    let cidr = Net.Cidr_max(new IPv4(m[1]), new IPv4(m[2]))
 	    return {
-		cidr,
-		mask: exports.mask(cidr),
-		ip: exports.str2ip(m[1])
+		type: 'net',
+		net: new Net(m[1], cidr)
 	    }
 	}
 
-	throw new Error('incomplete query')
+	throw new Error('invalid query')
     }
 
 })(typeof exports === 'object' ? exports : cidr)
+
 
 /* main */
 if (typeof window === 'object') {
@@ -487,9 +481,9 @@ if (typeof window === 'object') {
 	    this.templ = []
 	}
 
-	pad(ddn) {
+	pad(ip) {
 	    let n = 4*3 + 3
-	    return (' '.repeat(n) + ddn).slice(-n)
+	    return (' '.repeat(n) + ip.toString()).slice(-n)
 	}
 
 	prelude(nets) {
@@ -517,13 +511,12 @@ if (typeof window === 'object') {
 		return prev + cur.nhosts
 	    }, 0)
 	    let ip_wasted = nets.tbl.reduce( (prev, cur) => {
-		let mh = cidr.maxhosts(cur.cidr)
-		return prev + mh - cur.nhosts
+		return prev + cur.net.maxhosts() - cur.nhosts
 	    }, 0)
-	    let net = this.link(cidr.ip2str(this.data.ip) +'/' + this.data.cidr)
-	    let mh = cidr.maxhosts(this.data.cidr)
+	    let url = this.link(this.data.net)
 
-	    this.row(net, mh, ip_wanted, ip_used, ip_wasted,
+	    this.row(url, this.data.net.maxhosts(),
+		     ip_wanted, ip_used, ip_wasted,
 		     this.data.hosts.length, nets.tbl.length)
 	    this.templ.push('</tbody></table>')
 	}
@@ -533,7 +526,15 @@ if (typeof window === 'object') {
 	}
 
 	start() {
-	    let nets = cidr.vlsm(this.data.ip, this.data.cidr, this.data.hosts)
+	    let nets
+	    try {
+		nets = this.data.net.vlsm(this.data.hosts)
+	    } catch (err) {
+		this.templ.push(`<p><b>Error:</b> ${err.message}</p>`)
+		this.finish()
+		return
+	    }
+
 	    if (nets.error)
 		this.templ.push(`<p><b>Error:</b> ${nets.error}</p>`)
 
@@ -557,13 +558,13 @@ if (typeof window === 'object') {
 		let row = ['<tr>']
 
 		row.push(`<td>${val.nhosts}</td>`)
-		let ha = cidr.maxhosts(val.cidr)
-		row.push(`<td>${this.link(val.cidr, ha)}</td>`)
+		let ha = val.net.maxhosts()
+		row.push(`<td>${this.link(val.net.cidr, ha)}</td>`)
 		row.push(`<td>${ha - val.nhosts}</td>`)
-		row.push(`<td class="cidr-calc--range">${this.pad(cidr.ip2str(val.range[0]))} → ${cidr.ip2str(val.range[1])}</td>`)
-		let net = cidr.ip2str(val.net) + '/' + val.cidr
-		row.push(`<td>${this.link(net)}</td>`)
-		row.push(`<td>${cidr.ip2str(val.brd)}</td>`)
+		let range = val.net.range()
+		row.push(`<td class="cidr-calc--range">${this.pad(range[0])} — ${range[1]}</td>`)
+		row.push(`<td>${this.link(val.net)}</td>`)
+		row.push(`<td>${val.net.broadcast()}</td>`)
 
 		row.push('</tr>')
 		this.templ.push(row.join("\n"))
@@ -577,66 +578,77 @@ if (typeof window === 'object') {
     class IPRenderer extends Renderer {
 	constructor(data, node, url_params) {
 	    super(data, node, url_params)
-
 	    this.templ = ['<table><tbody>']
-	    this.geo = new Geo(url_params)
 	}
 
 	static Bits(ip) {
-	    return '<code>' + ip.map( val => val.join('')).join(' ') + '</code>'
-	}
-
-	static Bits_paint(ip, cidr) {
-	    let idx = 0
-	    return ip.map( chunk => {
-		return chunk.map( bit => {
-		    let kls = idx++ < cidr ? 'cidr-calc--net' : 'cidr-calc--ip'
-		    return `<span class="${kls}"><code>${bit}</code></span>`
-		}).join('')
-	    }).join('<code>&nbsp;</code>')
+	    if (!ip) return ''
+	    return '<code>' + ip.to_a()
+		.map( val => val.join('')).join(' ') + '</code>'
 	}
 
 	start() {
-	    let r = this.data
-
-	    this.row('CIDR', r.cidr)
-	    this.row('Mask', this.link(cidr.ip2str(r.mask)),
-		     IPRenderer.Bits(r.mask))
-	    this.row('Max hosts', cidr.maxhosts(r.cidr).toLocaleString('en-US'))
-
-	    let ip_ddn
-	    if (r.ip) {
-		let desc = cidr.describe(r.ip, r.mask)
-		if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
-		if (desc.link) desc.subtype += ', ' + this.link(desc.link)
-		this.row('Type', desc.type, desc.subtype)
-
-		ip_ddn = cidr.ip2str(r.ip)
-		this.row('Address', ip_ddn, IPRenderer.Bits_paint(r.ip, r.cidr))
-
-		if (desc.type === 'Regular') {
-		    this.templ.push('<tr><td colspan=3>')
-		    this.templ.push(this.geo.template())
-		    this.templ.push('</td></tr>')
-		}
-
-		let net = cidr.netaddr(r.ip, r.mask)
-		this.row('Network', cidr.ip2str(net), IPRenderer.Bits(net))
-
-		let brd = cidr.broadcast_addr(r.ip, r.mask)
-		this.row('Broadcast', cidr.ip2str(brd), IPRenderer.Bits(brd))
-
-		let host = cidr.hostaddr(r.ip, r.mask)
-		this.row('Host', cidr.ip2str(host), IPRenderer.Bits(host))
-
-		let range = cidr.hosts_range(r.ip, r.mask)
-		this.row('Begin', cidr.ip2str(range[0]))
-		this.row('End', cidr.ip2str(range[1]))
-	    }
+	    this.row('CIDR', this.data.cidr)
+	    this.row('Mask', this.link(this.data.mask),
+		     IPRenderer.Bits(this.data.mask))
+	    this.row('Max hosts', cidr.Net.Maxhosts(this.data.cidr)
+		     .toLocaleString('en-US'))
 
 	    this.templ.push('</tbody></table>')
 	    this.node.innerHTML = this.templ.join("\n")
-	    this.geo.hook(ip_ddn)
+	}
+    }
+
+    class NetRenderer extends IPRenderer {
+	constructor(data, node, url_params) {
+	    super(data, node, url_params)
+	    this.geo = new Geo(url_params)
+	}
+
+	static Bits_paint(net) {
+	    let idx = 0
+	    return net.ip.to_a().map( chunk => {
+		return chunk.map( bit => {
+		    let kls = idx++ < net.cidr ?'cidr-calc--net':'cidr-calc--ip'
+		    return `<span class="${kls}"><code>${bit}</code></span>`
+		}).join('')
+	    }).join('<code> </code>')
+	}
+
+	start() {
+	    let net = this.data.net
+
+	    this.row('CIDR', net.cidr)
+	    this.row('Mask', this.link(net.mask), IPRenderer.Bits(net.mask))
+	    this.row('Max hosts', net.maxhosts().toLocaleString('en-US'))
+
+	    let desc = net.describe()
+	    if (desc.type !== 'Regular') desc.type = `<b>${desc.type}</b>`
+	    if (desc.link) desc.subtype += ', ' + this.link(desc.link)
+	    this.row('Type', desc.type, desc.subtype)
+
+	    this.row('Address', net.ip, NetRenderer.Bits_paint(net))
+
+	    if (desc.type === 'Regular') {
+		this.templ.push('<tr><td colspan=3>')
+		this.templ.push(this.geo.template())
+		this.templ.push('</td></tr>')
+	    }
+
+	    this.row('Network', net.netaddr(), IPRenderer.Bits(net.netaddr()))
+
+	    this.row('Broadcast', net.broadcast() || 'n/a',
+		     IPRenderer.Bits(net.broadcast()))
+
+	    this.row('Host', net.hostaddr(), IPRenderer.Bits(net.hostaddr()))
+
+	    let range = net.range()
+	    this.row('Begin', range[0])
+	    this.row('End', range[1])
+
+	    this.templ.push('</tbody></table>')
+	    this.node.innerHTML = this.templ.join("\n")
+	    this.geo.hook(net.ip.toString())
 	}
     }
 
@@ -652,9 +664,11 @@ if (typeof window === 'object') {
 	}
 
 	let engine = {
+	    cidr: IPRenderer,
+	    net: NetRenderer,
 	    vlsm: VlsmRenderer
 	}
-	let klass = engine[r.type] || IPRenderer;
+	let klass = engine[r.type];
 	(new klass(r, out, url_params)).start()
 
 	// upd location after successful rendering only
