@@ -48,6 +48,9 @@ if $0 == __FILE__
     margin: 0 auto;
   }
 }
+@media (max-width: 500px) {
+  table td { border-left: 1px solid white; }
+}
 @media print
 {
   th, td {
@@ -92,6 +95,10 @@ details details ul { margin-top: .5em; }
 .cidr-calc--range {
   white-space: pre;
   font-family: monospace;
+}
+pre {
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 </style>
 </head>
