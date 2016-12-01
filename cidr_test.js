@@ -248,6 +248,13 @@ suite('Misc', function() {
 	    type: 'net',
 	    net: new cidr.Net('128.42.5.17', 30)
 	})
+
+	assert.deepEqual(cidr.query_parse('128.42.3.20 in 128.42.3.17/29'), {
+	    type: 'net-contains',
+	    net: new cidr.Net('128.42.3.17', 29),
+	    ip: new cidr.IPv4('128.42.3.20')
+	})
+
     })
 
 })

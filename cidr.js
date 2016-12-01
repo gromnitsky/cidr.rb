@@ -360,6 +360,7 @@ let cidr = {};
 		net: new Net(m[1], cidr)
 	    }
 	}
+
 	// 192.168.1.1/26 20,2,7,1
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+) ([0-9,]+)$/)) ) {
 	    let cidr = parseInt(m[2], 10)
@@ -368,6 +369,15 @@ let cidr = {};
 		type: 'vlsm',
 		net: new Net(m[1], cidr),
 		hosts
+	    }
+	}
+
+	// 128.42.3.20 in 128.42.3.17/29
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) in (\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
+	    return {
+		type: 'net-contains',
+		net: new Net(m[2], parseInt(m[3], 10)),
+		ip: new IPv4(m[1])
 	    }
 	}
 
@@ -469,6 +479,12 @@ if (typeof window === 'object') {
 	    this.data = data
 	    this.node = node
 	    this.url_params = url_params
+
+	    this.templ = []
+	}
+
+	finish() {
+	    this.node.innerHTML = this.templ.join("\n")
 	}
 
 	row() {
@@ -493,7 +509,6 @@ if (typeof window === 'object') {
     class VlsmRenderer extends Renderer {
 	constructor(data, node, url_params) {
 	    super(data, node, url_params)
-	    this.templ = []
 	}
 
 	pad(ip) {
@@ -534,10 +549,6 @@ if (typeof window === 'object') {
 		     ip_wanted, ip_used, ip_wasted,
 		     this.data.hosts.length, nets.tbl.length)
 	    this.templ.push('</tbody></table>')
-	}
-
-	finish() {
-	    this.node.innerHTML = this.templ.join("\n")
 	}
 
 	start() {
@@ -593,7 +604,6 @@ if (typeof window === 'object') {
     class IPRenderer extends Renderer {
 	constructor(data, node, url_params) {
 	    super(data, node, url_params)
-	    this.templ = ['<table><tbody>']
 	}
 
 	static Bits(ip) {
@@ -603,6 +613,7 @@ if (typeof window === 'object') {
 	}
 
 	start() {
+	    this.templ.push('<table><tbody>')
 	    this.row('CIDR', this.data.cidr)
 	    this.row('Mask', this.link(this.data.mask),
 		     IPRenderer.Bits(this.data.mask))
@@ -610,7 +621,7 @@ if (typeof window === 'object') {
 		     .toLocaleString('en-US'))
 
 	    this.templ.push('</tbody></table>')
-	    this.node.innerHTML = this.templ.join("\n")
+	    this.finish()
 	}
     }
 
@@ -631,6 +642,7 @@ if (typeof window === 'object') {
 	}
 
 	start() {
+	    this.templ.push('<table><tbody>')
 	    let net = this.data.net
 
 	    this.row('CIDR', net.cidr)
@@ -662,8 +674,24 @@ if (typeof window === 'object') {
 	    this.row('End', range[1])
 
 	    this.templ.push('</tbody></table>')
-	    this.node.innerHTML = this.templ.join("\n")
+	    this.finish()
 	    this.geo.hook(net.ip.toString())
+	}
+    }
+
+    class NetContainsRenderer extends NetRenderer {
+	constructor(data, node, url_params) {
+	    super(data, node, url_params)
+	}
+
+	start() {
+	    let includes = this.data.net.does_include(this.data.ip)
+	    if (!includes) {
+		this.templ.push(`<p><b>No</b>, see ${this.link(this.data.net)}.</p>`)
+		this.finish()
+		return
+	    }
+	    super.start()
 	}
     }
 
@@ -681,7 +709,8 @@ if (typeof window === 'object') {
 	let engine = {
 	    cidr: IPRenderer,
 	    net: NetRenderer,
-	    vlsm: VlsmRenderer
+	    vlsm: VlsmRenderer,
+	    'net-contains': NetContainsRenderer
 	}
 	let klass = engine[r.type];
 	(new klass(r, out, url_params)).start()

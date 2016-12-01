@@ -119,6 +119,7 @@ pre {
 <tr><td><code>192.168.1.1/30</code></td> <td>IP & CIDR</td></tr>
 <tr><td><code>128.42.5.17 ~ 128.42.5.18</code></td> <td>Find the max mask for 2 IPs</td></tr>
 <tr><td><code>192.168.1.0/26 1,7,29,2,6</code></td> <td>VLSM (divide a network into subnets)</td></tr>
+<tr><td><code>128.42.3.20 in 128.42.3.17/29</code></td> <td>Check if an IP belongs to a network</td></tr>
 </tbody>
 </table>
   <details>
