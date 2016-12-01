@@ -746,6 +746,8 @@ if (typeof window === 'object') {
     document.addEventListener('DOMContentLoaded', () => {
 	let params = new URLSearchParams(location.hash.slice(2))
 	let input = document.getElementById('cidr-calc__input')
+	if (!input) return
+
 	input.addEventListener('keydown', (evt) => {
 	    if (evt.keyCode === 13) calc(params)
 	})
@@ -756,7 +758,7 @@ if (typeof window === 'object') {
 	    input.value = params.get('q')
 	    calc(params)
 	}
-	window.addEventListener("hashchange", _unused => {
+	window.addEventListener("hashchange", () => {
 	    params = new URLSearchParams(location.hash.slice(2))
 	    input.value = params.get('q')
 	    calc(params)
