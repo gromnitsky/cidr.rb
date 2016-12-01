@@ -174,6 +174,19 @@ suite('Net', function() {
 	    tbl: []
 	})
     })
+
+    test('to_iter', function() {
+	let arr = Array.from(new cidr.Net('128.42.3.17', 29).to_iter())
+	assert.deepEqual(arr, [
+	    new cidr.IPv4('128.42.3.17'),
+	    new cidr.IPv4('128.42.3.18'),
+	    new cidr.IPv4('128.42.3.19'),
+	    new cidr.IPv4('128.42.3.20'),
+	    new cidr.IPv4('128.42.3.21'),
+	    new cidr.IPv4('128.42.3.22')
+	])
+    })
+
 })
 
 suite('Misc', function() {

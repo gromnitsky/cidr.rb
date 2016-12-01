@@ -301,6 +301,17 @@ let cidr = {};
 
 	    return result
 	}
+
+	to_iter() {
+	    let range = this.range()
+	    let ip = range[0]
+	    let gen = function*() {
+		while (ip <= range[1]) {
+		    yield new IPv4(ip++)
+		}
+	    }
+	    return gen()
+	}
     }
     exports.Net = Net
 
