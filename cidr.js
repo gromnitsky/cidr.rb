@@ -312,6 +312,10 @@ let cidr = {};
 	    }
 	    return gen()
 	}
+
+	does_include(ip) {
+	    return this.netaddr().eq(new Net(ip, this.cidr).netaddr())
+	}
     }
     exports.Net = Net
 
