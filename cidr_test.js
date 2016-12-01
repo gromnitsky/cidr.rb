@@ -174,6 +174,11 @@ suite('Net', function() {
 	    tbl: []
 	})
     })
+})
+
+suite('Misc', function() {
+    setup(function() {
+    })
 
     test('query_parse', function() {
 	assert.throws( () => {
