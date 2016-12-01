@@ -136,16 +136,30 @@ let cidr = {};
 
     class Net {
 	constructor(ip, mask_or_cidr) {
-	    if (ip instanceof IPv4) {
-		this.ip = ip
-	    } else {
-		this.ip = new IPv4(ip)
+	    if (ip instanceof Net) {
+		this.ip = ip.ip
+		this.cidr = ip.cidr
+		this.mask = ip.mask
+		return
 	    }
+
+	    this.ip = new IPv4(ip)
 	    if (Number.isInteger(mask_or_cidr)) {
 		this.cidr = mask_or_cidr
 		this.mask = Net.Mask(this.cidr)
 	    } else {
 		this.mask = mask_or_cidr
+		if (!this.mask) {
+		    let ok = false
+		    if (typeof ip === 'string') { // ip was in a CIDR notation
+			let spec = ip.split('/')[1]
+			if (spec !== undefined) {
+			    ok = true
+			    this.mask = Net.Mask(parseInt(spec, 10))
+			}
+		    }
+		    if (!ok) throw new Error('CIDR is missing')
+		}
 		this.cidr = Net.Cidr(this.mask)
 	    }
 	}
@@ -168,6 +182,12 @@ let cidr = {};
 
 	toString() {
 	    return this.ip.toString() + '/' + this.cidr
+	}
+
+	eq(to) {
+	    if (!to) return false
+	    to = new Net(to)
+	    return (this.ip.eq(to.ip)) && (this.cidr === to.cidr)
 	}
 
 	inspect() {

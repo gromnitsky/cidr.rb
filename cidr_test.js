@@ -56,9 +56,34 @@ suite('Net', function() {
 	assert.equal(new cidr.Net('192.0.0.1', 18).mask.toString(), '255.255.192.0')
 	assert.equal(new cidr.Net(new cidr.IPv4('192.0.0.1'), new cidr.IPv4('255.255.192.0')).cidr, 18)
 
+	assert.deepEqual(new cidr.Net('192.0.0.1/24'),
+			 new cidr.Net('192.0.0.1', 24))
+
+	assert.deepEqual(new cidr.Net(new cidr.Net('192.0.0.1/24')),
+			 new cidr.Net('192.0.0.1', 24))
+
 	assert.throws( () => {
 	    new cidr.Net('192.0.0.1', new cidr.IPv4('255.255.192.1'))
 	}, /invalid mask/)
+
+	assert.throws( () => {
+	    new cidr.Net('192.0.0.1')
+	}, /CIDR is missing/)
+
+	assert.throws( () => {
+	    new cidr.Net('192.0.0.1', 'garbage')
+	}, Error)
+    })
+
+    test('eq', function() {
+	let net1 = new cidr.Net('192.0.0.1/24')
+	let net2 = new cidr.Net('192.0.0.1/24')
+	let net3 = new cidr.Net('192.0.0.1/32')
+	assert.equal(net1.eq(net2), true)
+	assert.equal(net1.eq('192.0.0.1/24'), true)
+	assert.equal(net1.eq(new cidr.Net('192.0.0.1', 24)), true)
+	assert.equal(net1.eq(net3), false)
+	assert.equal(net1.eq('192.0.0.2/24'), false)
     })
 
     test('net/host/brd', function() {
