@@ -99,7 +99,7 @@ let cidr = {};
 	}
 
 	eq(to) {
-	    if (!to) return false
+	    if (!to && to !== 0) return false // 0 is '0.0.0.0'
 	    return this.addr === (new IPv4(to)).addr
 	}
 

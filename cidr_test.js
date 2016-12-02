@@ -27,6 +27,11 @@ suite('IPv4', function() {
 	assert.equal(ip.eq('192.0.0.255'), true)
 	assert.equal(ip.eq('192.0.0.254'), false)
 	assert.equal(ip.eq(null), false)
+	assert.equal(new cidr.IPv4(0).eq(new cidr.IPv4(0)), true)
+	assert.equal(new cidr.IPv4(0).eq(0), true)
+	assert.equal(new cidr.IPv4(0).eq(1), false)
+	assert.equal(new cidr.IPv4(0).eq(NaN), false)
+	assert.equal(new cidr.IPv4(0).eq(undefined), false)
     })
 
     test('toString', function() {
