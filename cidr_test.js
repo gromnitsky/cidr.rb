@@ -12,7 +12,7 @@ suite('IPv4', function() {
     test('constructor', function() {
 	assert.throws( () => {
 	    new cidr.IPv4(-1)
-	}, /invalid number/)
+	}, /integer doesn't fit/)
 
 	assert.equal(new cidr.IPv4('192.0.0.255').addr, 3221225727)
     })
@@ -59,10 +59,20 @@ suite('Net', function() {
 
     test('constructor', function() {
 	assert.equal(new cidr.Net('192.0.0.1', 18).mask.toString(), '255.255.192.0')
-	assert.equal(new cidr.Net(new cidr.IPv4('192.0.0.1'), new cidr.IPv4('255.255.192.0')).cidr, 18)
+	assert.equal(new cidr.Net(new cidr.IPv4('192.0.0.1'),
+				  new cidr.IPv4('255.255.192.0')).cidr, 18)
+	assert.equal(new cidr.Net(new cidr.IPv4('192.0.0.1'),
+				  '255.255.192.0').cidr, 18)
+
+	assert.throws( () => {
+	    new cidr.Net('192.0.0.1', '254.255.192.0')
+	}, /invalid mask/)
 
 	assert.deepEqual(new cidr.Net('192.0.0.1/24'),
 			 new cidr.Net('192.0.0.1', 24))
+
+	assert.deepEqual(new cidr.Net('192.0.0.1/24'),
+			 new cidr.Net('192.0.0.1', '24'))
 
 	assert.deepEqual(new cidr.Net(new cidr.Net('192.0.0.1/24')),
 			 new cidr.Net('192.0.0.1', 24))
@@ -77,7 +87,7 @@ suite('Net', function() {
 
 	assert.throws( () => {
 	    new cidr.Net('192.0.0.1', 'garbage')
-	}, Error)
+	}, /invalid CIDR/)
     })
 
     test('eq', function() {

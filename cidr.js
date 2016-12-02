@@ -91,7 +91,7 @@ let cidr = {};
 				     .join(''), 2)
 	    }
 	    if (this.addr < IPv4.MIN || this.addr > IPv4.MAX)
-		throw new Error(`invalid number: ${this.addr}`)
+		throw new Error(`integer doesn't fit in [${IPv4.MIN}...${IPv4.MAX}] range: ${this.addr}`)
 	}
 
 	valueOf() {
@@ -144,18 +144,29 @@ let cidr = {};
 	    }
 
 	    this.ip = new IPv4(ip)
+
 	    if (Number.isInteger(mask_or_cidr)) {
 		this.cidr = mask_or_cidr
 		this.mask = Net.Mask(this.cidr)
+
+	    } else if (typeof mask_or_cidr === 'string') {
+		if (mask_or_cidr.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+		    this.mask = new IPv4(mask_or_cidr)
+		    this.cidr = Net.Cidr(this.mask)
+		} else {
+		    this.cidr = Net.parseCidr(mask_or_cidr)
+		    this.mask = Net.Mask(this.cidr)
+		}
+
 	    } else {
-		this.mask = mask_or_cidr
+		this.mask = mask_or_cidr // IPv4 obj
 		if (!this.mask) {
 		    let ok = false
 		    if (typeof ip === 'string') { // ip was in a CIDR notation
 			let spec = ip.split('/')[1]
 			if (spec !== undefined) {
 			    ok = true
-			    this.mask = Net.Mask(parseInt(spec, 10))
+			    this.mask = Net.Mask(spec)
 			}
 		    }
 		    if (!ok) throw new Error('CIDR is missing')
@@ -164,14 +175,22 @@ let cidr = {};
 	    }
 	}
 
+	static parseCidr(spec) {
+	    let r = parseInt(spec, 10)
+	    if (isNaN(r) || r < 0 || r > 32)
+		throw new Error(`invalid CIDR: ${r}`)
+	    return r
+	}
+
 	static Mask(cidr) {
-	    if (cidr < 0 || cidr > 32) throw new Error(`invalid cidr: ${cidr}`)
+	    cidr = Net.parseCidr(cidr)
 	    let ones = Array(cidr).fill(1)
 	    let zeros = Array(32 - ones.length).fill(0)
 	    let dec = parseInt(ones.concat(zeros).join(''), 2)
 	    return new IPv4(dec)
 	}
 
+	// mask is IPv4 obj
 	static Cidr(mask) {
 	    let flatten = [].concat.apply([], mask.to_a())
 	    let cidr = flatten.reduce( (prev, cur) => prev + cur, 0)
@@ -249,7 +268,7 @@ let cidr = {};
 	    for (let key in special_addr_tbl) {
 		let [ip_loop, cidr_loop] = key.split('/')
 		ip_loop = new IPv4(ip_loop)
-		cidr_loop = parseInt(cidr_loop, 10)
+		cidr_loop = Net.parseCidr(cidr_loop)
 
 		if (this.cidr >= cidr_loop) {
 		    let netaddr_loop = new Net(this.ip, cidr_loop).netaddr()
@@ -345,11 +364,10 @@ let cidr = {};
 
 	// /16
 	if ((m = query.match(/^\/?(\d+)$/)) ) {
-	    let cidr = parseInt(m[1], 10)
 	    return {
 		type: 'cidr',
-		cidr,
-		mask: Net.Mask(cidr)
+		cidr: Net.parseCidr(m[1]),
+		mask: Net.Mask(m[1])
 	    }
 	}
 
@@ -365,29 +383,26 @@ let cidr = {};
 
 	// 192.168.1.1 255.255.0.0
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) (\d+\.\d+\.\d+\.\d+)$/)) ) {
-	    let mask = new IPv4(m[2])
 	    return {
 		type: 'net',
-		net: new Net(m[1], Net.Cidr(mask))
+		net: new Net(m[1], m[2])
 	    }
 	}
 
 	// 192.168.1.1/30
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
-	    let cidr = parseInt(m[2], 10)
 	    return {
 		type: 'net',
-		net: new Net(m[1], cidr)
+		net: new Net(m[0])
 	    }
 	}
 
 	// 192.168.1.1/26 20,2,7,1
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+) ([0-9,]+)$/)) ) {
-	    let cidr = parseInt(m[2], 10)
 	    let hosts = m[3].split(',').map( val => parseInt(val, 10))
 	    return {
 		type: 'vlsm',
-		net: new Net(m[1], cidr),
+		net: new Net(m[1], m[2]),
 		hosts
 	    }
 	}
@@ -396,7 +411,7 @@ let cidr = {};
 	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) in (\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
 	    return {
 		type: 'net-contains',
-		net: new Net(m[2], parseInt(m[3], 10)),
+		net: new Net(m[2], m[3]),
 		ip: new IPv4(m[1])
 	    }
 	}
