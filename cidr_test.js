@@ -212,11 +212,11 @@ suite('Net', function() {
 	])
     })
 
-    test('does_include', function() {
+    test('includes', function() {
 	let net = new cidr.Net('128.42.3.17', 29)
-	assert.equal(net.does_include('128.42.3.17'), true)
-	assert.equal(net.does_include('128.42.3.18'), true)
-	assert.equal(net.does_include('128.42.3.15'), false)
+	assert.equal(net.includes('128.42.3.17'), true)
+	assert.equal(net.includes('128.42.3.18'), true)
+	assert.equal(net.includes('128.42.3.15'), false)
     })
 
 })

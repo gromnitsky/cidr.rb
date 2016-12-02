@@ -333,7 +333,7 @@ let cidr = {};
 	    return gen()
 	}
 
-	does_include(ip) {
+	includes(ip) {
 	    return this.netaddr().eq(new Net(ip, this.cidr).netaddr())
 	}
     }
@@ -705,7 +705,7 @@ if (typeof window === 'object') {
 	}
 
 	start() {
-	    let includes = this.data.net.does_include(this.data.ip)
+	    let includes = this.data.net.includes(this.data.ip)
 	    if (!includes) {
 		this.templ.push(`<p><b>No</b>, see ${this.link(this.data.net)}.</p>`)
 		this.finish()

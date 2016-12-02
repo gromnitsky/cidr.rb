@@ -88,9 +88,9 @@ true
   link: '192.168.0.0/16' }
 > new cidr.Net('192.168.1.1/24').maxhosts()
 254
-> new cidr.Net('192.168.1.1/28').does_include('192.168.1.10')
+> new cidr.Net('192.168.1.1/28').includes('192.168.1.10')
 true
-> new cidr.Net('192.168.1.1/28').does_include('192.168.1.40')
+> new cidr.Net('192.168.1.1/28').includes('192.168.1.40')
 false
 > cidr.Net.Cidr_max(new cidr.IPv4('128.42.5.17'), new cidr.IPv4('128.42.5.18'))
 30
