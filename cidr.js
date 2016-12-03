@@ -207,6 +207,10 @@ let cidr = {};
 	    return this.ip.toString() + '/' + this.cidr
 	}
 
+	valueOf() {
+	    return this.netaddr()
+	}
+
 	eq(to) {
 	    if (!to) return false
 	    to = new Net(to)

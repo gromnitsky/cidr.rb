@@ -253,6 +253,10 @@ suite('Net', function() {
 		     true)
     })
 
+    test('coercion', function() {
+	assert(new cidr.Net('192.0.2.1/32') < new cidr.Net('192.0.2.2/32'))
+	assert(new cidr.Net('192.0.2.1/32') > new cidr.Net('192.0.2.0/32'))
+    })
 })
 
 suite('Misc', function() {

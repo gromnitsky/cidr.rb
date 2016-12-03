@@ -102,6 +102,8 @@ false
      { nhosts: 6, net: #<Net: 192.168.1.48/29> },
      { nhosts: 2, net: #<Net: 192.168.1.56/30> },
      { nhosts: 1, net: #<Net: 192.168.1.60/30> } ] }
+> new cidr.Net('192.0.2.1/32') < new cidr.Net('192.0.2.2/32')
+true
 ~~~
 
 ## Bugs
