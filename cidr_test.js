@@ -232,6 +232,25 @@ suite('Net', function() {
 	assert.equal(net.includes('128.42.3.17'), true)
 	assert.equal(net.includes('128.42.3.18'), true)
 	assert.equal(net.includes('128.42.3.15'), false)
+
+	assert.equal(new cidr.Net('192.168.0.100/24').includes('192.168.0.1/17'),
+		     false)
+	assert.equal(new cidr.Net('192.168.0.100/17').includes('192.168.0.1/17'),
+		     true)
+	assert.equal(new cidr.Net('192.168.0.100/17').includes('192.168.0.1/24'),
+		     true)
+
+	assert.equal(new cidr.Net('127.0.0.1/8').includes('127.0.100.1/9'),
+		     true)
+	assert.equal(new cidr.Net('127.0.0.1/8').includes('127.0.0.1/7'),
+		     false)
+	assert.equal(new cidr.Net('127.0.0.1/8').includes('1.0.0.1/9'),
+		     false)
+	assert.equal(new cidr.Net('127.0.0.1/8').includes('126.0.100.1/9'),
+		     false)
+
+	assert.equal(new cidr.Net('192.168.0.0/16').includes('192.168.1.1/30'),
+		     true)
     })
 
 })
@@ -292,7 +311,13 @@ suite('Misc', function() {
 	assert.deepEqual(cidr.query_parse('128.42.3.20 in 128.42.3.17/29'), {
 	    type: 'net-contains',
 	    net: new cidr.Net('128.42.3.17', 29),
-	    ip: new cidr.IPv4('128.42.3.20')
+	    q: '128.42.3.20'
+	})
+
+	assert.deepEqual(cidr.query_parse('128.42.3.20/29 in 128.42.3.17/29'), {
+	    type: 'net-contains',
+	    net: new cidr.Net('128.42.3.17', 29),
+	    q: '128.42.3.20/29'
 	})
 
     })

@@ -175,6 +175,8 @@ let cidr = {};
 	    }
 	}
 
+	// String -> Number
+	// Number -> Number
 	static parseCidr(spec) {
 	    let r = parseInt(spec, 10)
 	    if (isNaN(r) || r < 0 || r > 32)
@@ -182,6 +184,8 @@ let cidr = {};
 	    return r
 	}
 
+	// String -> IPv4
+	// Number -> IPv4
 	static Mask(cidr) {
 	    cidr = Net.parseCidr(cidr)
 	    let ones = Array(cidr).fill(1)
@@ -190,7 +194,7 @@ let cidr = {};
 	    return new IPv4(dec)
 	}
 
-	// mask is IPv4 obj
+	// IPv4 -> Number
 	static Cidr(mask) {
 	    let flatten = [].concat.apply([], mask.to_a())
 	    let cidr = flatten.reduce( (prev, cur) => prev + cur, 0)
@@ -266,22 +270,14 @@ let cidr = {};
 	    if (this.ip.eq(this.broadcast())) subtype.push('broadcast')
 
 	    for (let key in special_addr_tbl) {
-		let [ip_loop, cidr_loop] = key.split('/')
-		ip_loop = new IPv4(ip_loop)
-		cidr_loop = Net.parseCidr(cidr_loop)
-
-		if (this.cidr >= cidr_loop) {
-		    let netaddr_loop = new Net(this.ip, cidr_loop).netaddr()
-
-		    if (ip_loop.eq(netaddr_loop)) {
-			let val = special_addr_tbl[key]
-			subtype = [val.name]
-			if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
-			return {
-			    type: 'Special-purpose',
-			    subtype: subtype.join(', '),
-			    link: key
-			}
+		if (new Net(key).includes(this)) {
+		    let val = special_addr_tbl[key]
+		    subtype = [val.name]
+		    if (val.attrs !== '') subtype.push(`attrs=${val.attrs}`)
+		    return {
+			type: 'Special-purpose',
+			subtype: subtype.join(', '),
+			link: key
 		    }
 		}
 	    }
@@ -352,8 +348,15 @@ let cidr = {};
 	    return gen()
 	}
 
-	includes(ip) {
-	    return this.netaddr().eq(new Net(ip, this.cidr).netaddr())
+	includes(spec) {
+	    let net
+	    try {
+		net = new Net(spec)
+	    } catch (_unused) {
+		return this.netaddr().eq(new Net(spec, this.cidr).netaddr())
+	    }
+	    if (this.cidr > net.cidr) return false
+	    return this.netaddr().eq(new Net(net.ip, this.cidr).netaddr())
 	}
     }
     exports.Net = Net
@@ -408,11 +411,12 @@ let cidr = {};
 	}
 
 	// 128.42.3.20 in 128.42.3.17/29
-	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+) in (\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
+	// 128.42.3.20/29 in 128.42.3.17/29
+	if ((m = query.match(/^(\d+\.\d+\.\d+\.\d+)(\/\d+)? in (\d+\.\d+\.\d+\.\d+)\/(\d+)$/)) ) {
 	    return {
 		type: 'net-contains',
-		net: new Net(m[2], m[3]),
-		ip: new IPv4(m[1])
+		net: new Net(m[3], m[4]),
+		q: m[1] + (m[2] || '')
 	    }
 	}
 
@@ -720,7 +724,7 @@ if (typeof window === 'object') {
 	}
 
 	start() {
-	    let includes = this.data.net.includes(this.data.ip)
+	    let includes = this.data.net.includes(this.data.q)
 	    if (!includes) {
 		this.templ.push(`<p><b>No</b>, see ${this.link(this.data.net)}.</p>`)
 		this.finish()
