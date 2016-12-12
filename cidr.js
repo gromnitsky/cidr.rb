@@ -651,8 +651,11 @@ if (typeof window === 'object') {
 
 	static Bits(ip) {
 	    if (!ip) return ''
+	    let dec = ip._arr()
 	    return '<code>' + ip.to_a()
-		.map( val => val.join('')).join(' ') + '</code>'
+		.map( (val, idx) =>
+		      `<span title='${dec[idx]}'>${val.join('')}</span>`)
+		.join(' ') + '</code>'
 	}
 
 	start() {
@@ -676,11 +679,12 @@ if (typeof window === 'object') {
 
 	static Bits_paint(net) {
 	    let idx = 0
-	    return net.ip.to_a().map( chunk => {
-		return chunk.map( bit => {
+	    let dec = net.ip._arr()
+	    return net.ip.to_a().map( (chunk, chunk_idx) => {
+		return `<span title='${dec[chunk_idx]}'>` + chunk.map( bit => {
 		    let kls = idx++ < net.cidr ?'cidr-calc--net':'cidr-calc--ip'
 		    return `<span class="${kls}"><code>${bit}</code></span>`
-		}).join('')
+		}).join('') + '</span>'
 	    }).join('<code> </code>')
 	}
 
