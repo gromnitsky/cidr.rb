@@ -454,9 +454,19 @@ if (typeof window === 'object') {
 		    '</details>'].join("\n")
 	}
 
+	escape(data) {
+	    let html_escape = function(html) { // DOM-style
+		let p = document.createElement('p')
+		p.textContent = html
+		return p.innerHTML
+	    }
+	    let obj = JSON.parse(JSON.stringify(data)) // dup
+	    for (let key in obj) obj[key] = html_escape(obj[key])
+	    return obj
+	}
+
 	render(data) {
-	    // we ought to validate `data` here but we implicitly
-	    // "trust" ipinfo.io & this is a pet app, so...
+	    data = this.escape(data)
 	    let t = ['<table><tbody>']
 	    let row = function(name, item, callback) {
 		if (!item) return
@@ -505,7 +515,7 @@ if (typeof window === 'object') {
 		region: "Kyiv City",
 		country: "UA",
 		loc: "50.4333,30.5167",
-		org: "AS6849 PJSC Ukrtelecom"
+		org: "AS6849 PJSC <b>Ukrtelecom</b>"
 	    })
 	    case '3': return Promise.resolve({
 		ip,
