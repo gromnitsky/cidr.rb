@@ -1,6 +1,6 @@
 {
     "name": "cidr.rb",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Classes to manipulate IPv4 addresses/networks + CIDR/VLSM routines",
     "main": "cidr.js",
     "repository": {
