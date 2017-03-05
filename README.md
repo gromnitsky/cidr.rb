@@ -1,4 +1,4 @@
-# cird.rb
+# cidr.rb
 
 Renders IPv4 CIDR blocks in console or browser. The latter is suitable
 for printing & pinning it to the wall.

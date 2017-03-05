@@ -294,7 +294,7 @@ let cidr = {};
 
 	vlsm(hosts) {
 	    if (this.cidr < 4 || this.cidr > 30)
-		throw new Error('the valid range for cird is [4...30]')
+		throw new Error('the valid range for cidr is [4...30]')
 	    if (!this.ip.eq(this.netaddr()))
 		throw new Error(`invalid network address: ${this.ip}`)
 
