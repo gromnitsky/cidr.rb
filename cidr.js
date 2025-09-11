@@ -521,7 +521,7 @@ if (typeof window === 'object') {
 		ip,
 		bogon: true
 	    })
-	    default: return fetch(`http://ipinfo.io/${ip}/json`)
+	    default: return fetch(`https://ipinfo.io/${ip}/json`)
 		    .then( r => r.json())
 	    }
 	}

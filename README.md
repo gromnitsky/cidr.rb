@@ -6,8 +6,6 @@ for printing & pinning it to the wall.
 Includes a simple CIDR/VLSM calculator. Works offline (except for geo
 ip lookups).
 
-Example: http://gromnitsky.users.sourceforge.net/js/cidr.rb/#/?q=128.42.5.17+%7E+128.42.5.18
-
 ## Usage
 
 ~~~
